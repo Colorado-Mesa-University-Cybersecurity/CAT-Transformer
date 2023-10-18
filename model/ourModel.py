@@ -139,7 +139,7 @@ class Embeddings(nn.Module):
 
         # Classifcation Embeddings for each target label
         self.target_label_embeddings = nn.ModuleList([nn.Embedding(1, embed_size) for _ in range(num_target_labels)])
-
+        
 
     def forward(self, x):
         x = x.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
