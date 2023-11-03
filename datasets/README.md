@@ -38,11 +38,11 @@ metric
 
 ## Helena
 url: https://www.openml.org/search?type=data&sort=runs&id=41169&status=active
-#objects 
-#num. 
-#cat. 
-metric 
-#classes
+#objects : 65196
+#num. : 27
+#cat. : 0
+metric : ACC
+#classes : 100
 
 ## DDOS
 url: https://www.unb.ca/cic/datasets/ddos-2019.html
@@ -54,24 +54,26 @@ metric
 
 ## California Housing
 url: https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_california_housing.html (Imported from SKlearn)
-#objects 
-#num. 
-#cat. 
-metric 
-#classes
+#objects : 20640
+#num. : 7
+#cat. : 0
+metric : MSE
+#classes : -
 
 ## Covertype
+Big classification dataset made up of purely numerical features
 url: https://www.openml.org/search?type=data&sort=runs&id=1596&status=active 
-#objects 
-#num. 
-#cat. 
-metric 
-#classes
+#objects : 581012
+#num. : 54
+#cat. : 0
+metric : ACC
+#classes : 7
 
 ## Insurance_co
+This is a classification dataset made up of purely categorical features
 url: https://www.openml.org/search?type=data&sort=runs&id=298&status=active 
-#objects 
-#num. 
-#cat. 
-metric 
-#classes
+#objects : 9822
+#num. : 0
+#cat. : 85
+metric : ACC
+#classes: 2
