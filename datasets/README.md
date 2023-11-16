@@ -53,12 +53,12 @@ metric
 #classes
 
 ## California Housing
-url: https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_california_housing.html (Imported from SKlearn)
+url: https://www.kaggle.com/datasets/camnugent/california-housing-prices (Imported from SKlearn)
 #objects : 20640
-#num. : 7
-#cat. : 0
+#num. : 9
+#cat. : 1
 metric : MSE
-#classes : -
+#classes : 10
 
 ## Covertype
 Big classification dataset made up of purely numerical features
