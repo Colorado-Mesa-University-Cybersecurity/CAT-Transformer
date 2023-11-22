@@ -7,7 +7,7 @@
 metric 
 #classes
 
-## Cancer
+## Cancer (GETTING RID OF IT)
 url: https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data  
 Label: diagnosis (B/M)  
 Features: 30 numerical features 
