@@ -53,7 +53,7 @@ metric
 #classes
 
 ## California Housing
-url: https://www.kaggle.com/datasets/camnugent/california-housing-prices (Imported from SKlearn)
+url: https://www.kaggle.com/datasets/camnugent/california-housing-prices
 #objects : 20640
 #num. : 9
 #cat. : 1
