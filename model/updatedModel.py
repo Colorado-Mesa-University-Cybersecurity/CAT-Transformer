@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-from rff.layers import GaussianEncoding
-from sklearn.metrics import accuracy_score, f1_score, recall_score
+import pandas as pd
+import numpy as np
+from torch.utils.data import Dataset, DataLoader
     
 #All layers of the model
 class MultiHeadAttention(nn.Module):
@@ -121,60 +122,59 @@ class Decoder(nn.Module):
   
         return x 
 
-class Embeddings(nn.Module):
-    def __init__(self, sigma, embed_size, input_size, embedding_dropout, n_cont, cat_feat, num_target_labels, rff_on):
-        super(Embeddings, self).__init__()
+class ExpFF(nn.Module):
+    def __init__(self, alpha, embed_size, n_cont, cat_feat, num_target_labels):
+        super(ExpFF, self).__init__()
 
-        self.rff_on = rff_on
+        self.alpha = alpha
+        self.embed_size = embed_size
+        self.n_cont = n_cont
+        self.cat_feat_on = False
+        if len(cat_feat)==0:
+            self.cat_feat_on=True
 
-        if self.rff_on:
-            self.rffs = nn.ModuleList([GaussianEncoding(sigma=sigma, input_size=input_size, encoded_size=embed_size//2) for _ in range(n_cont)])
-            self.dropout = nn.Dropout(embedding_dropout)
-            self.mlp_in = embed_size
-        else:
-            self.mlp_in = input_size
+        coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size)
+        coefficients = coefficients.unsqueeze(0)
 
-        self.cont_embeddings = nn.ModuleList([nn.Linear(in_features=self.mlp_in, out_features=embed_size) for _ in range(n_cont)])
+        self.register_buffer('embedding_coefficients', coefficients)
 
-        self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
+        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)])
 
-        # Classifcation Embeddings for each target label
-        self.target_label_embeddings = nn.ModuleList([nn.Embedding(1, embed_size) for _ in range(num_target_labels)])
+        if self.cat_feat_on:
+            self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
+            
+        #CLS Token
+        self.target_label_embed = nn.ModuleList([nn.Embedding(1, self.embed_size) for _ in range(num_target_labels)])
 
+    def forward(self, x_cat, x_cont):
+        x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
 
-    def forward(self, cat_x, cont_x):
-        x = cont_x.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
-        rff_vectors = []
-        if self.rff_on:
-            for i, r in enumerate(self.rffs):
-                input = x[:,i,:]
-                out = r(input)
-                rff_vectors.append(out)
-        
-            x = torch.stack(rff_vectors, dim=1)
+        temp = []
+        for i in range(self.n_cont):
+            input = x[:,i,:]
+            out = torch.cat([torch.cos(self.embedding_coefficients * input), torch.sin(self.embedding_coefficients * input)], dim=-1)
+            temp.append(out)
         
         embeddings = []
-        for i, e in enumerate(self.cont_embeddings):
+        x = torch.stack(temp, dim=1)
+        for i, e in enumerate(self.lin_embed):
             goin_in = x[:,i,:]
             goin_out = e(goin_in)
             embeddings.append(goin_out)
 
-        #embedding cat features
-        cat_x = cat_x.unsqueeze(2)
-        for i, e in enumerate(self.cat_embeddings):
-
-            goin_in = cat_x[:,i,:]
-  
-            goin_out = e(goin_in)
-            goin_out=goin_out.squeeze(1)
-            embeddings.append(goin_out)
+        if self.cat_feat_on:
+            cat_x = x_cat.unsqueeze(2)
+            for i, e in enumerate(self.cat_embeddings):
+                goin_in = cat_x[:,i,:]
+                goin_out = e(goin_in)
+                goin_out=goin_out.squeeze(1)
+                embeddings.append(goin_out)
 
         target_label_embeddings_ = []
-        for e in self.target_label_embeddings:
+        for e in self.target_label_embed:
             input = torch.tensor([0], device=x.device)
             temp = e(input)
             temp = temp.repeat(x.size(0), 1)
-            tmep = temp.unsqueeze(1)
             target_label_embeddings_.append(temp)
 
         class_embeddings = torch.stack(target_label_embeddings_, dim=1)
@@ -183,9 +183,9 @@ class Embeddings(nn.Module):
 
         return class_embeddings, context
 
-class classificationHead(nn.Module):
+class ClassificationHead(nn.Module):
     def __init__(self, embed_size, dropout, mlp_scale_classification, num_target_classes):
-        super(classificationHead, self).__init__()
+        super(ClassificationHead, self).__init__()
         
         #flattening the embeddings out so each sample in batch is represented with a 460 dimensional vector
         self.input = embed_size
@@ -221,133 +221,222 @@ class classificationHead(nn.Module):
   
         return x
 
+class RegressionHead(nn.Module):
+    def __init__(self, embed_size, dropout, mlp_scale_classification):
+        super(RegressionHead, self).__init__()
+        
+        #flattening the embeddings out so each sample in batch is represented with a 460 dimensional vector
+        self.input = embed_size
+        self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
+        self.drop = nn.Dropout(dropout)
+        self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
+        self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
+        self.lin4 = nn.Linear(self.input, 1)
+        self.relu = nn.ReLU()
+        self.initialize_weights()
+
+    def initialize_weights(self): #he_initialization.
+        torch.nn.init.kaiming_normal_(self.lin1.weight, nonlinearity='relu')
+        torch.nn.init.zeros_(self.lin1.bias)
+
+        torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
+        torch.nn.init.zeros_(self.lin3.bias)
+
+    def forward(self, x):
+
+        x= torch.reshape(x, (-1, self.input))
+
+        x = self.lin1(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.lin2(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.lin3(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.lin4(x)
+  
+        return x
+
 class CATTransformer(nn.Module):
     def __init__(self, 
-                 rff_on = False,
-                 sigma=4,
-                 embed_size=20,
-                 input_size=1,
-                 embedding_dropout = 0,
+                 alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
+                 embed_size=160,
                  n_cont = 0,
-                 cat_feat:list = [],
-                 num_layers=1,
-                 heads=1,
-                 forward_expansion=4, # Determines how wide the MLP is in the encoder. Its a scaling factor. 
-                 decoder_dropout=0,
-                 classification_dropout = 0,
+                 cat_feat:list = [], # ex: [10,4] - 10 categories in the first column, 4 categories in the second column
+                 num_layers=1, #Transformer layers
+                 heads=5, 
+                 forward_expansion=8, # Determines how wide the Linear Layers are the encoder. Its a scaling factor. 
+                 decoder_dropout=0.1,
+                 classification_dropout = 0.1,
                  pre_norm_on = False,
-                 mlp_scale_classification = 4,
-                 targets_classes : list=  [3,8]
+                 mlp_scale_classification = 8, #Scaling factor for linear layers in head
+                 regression_on = False,
+                 targets_classes : list=  [3]
                  ):
         super(CATTransformer, self).__init__()
 
-        self.embeddings = Embeddings(rff_on=rff_on, sigma=sigma, embed_size=embed_size, input_size=input_size, 
-                                     embedding_dropout=embedding_dropout,n_cont=n_cont, cat_feat=cat_feat, num_target_labels=len(targets_classes))
+        self.regression_on = regression_on
+
+        self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
                                decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on)
-        self.classifying_heads = nn.ModuleList([classificationHead(embed_size=embed_size, dropout=classification_dropout, 
+        if not regression_on:
+            self.out_head = ClassificationHead(embed_size=embed_size, dropout=classification_dropout, 
                                                                    mlp_scale_classification=mlp_scale_classification, 
-                                                                   num_target_classes=x) for x in targets_classes])
-        
+                                                                   num_target_classes=targets_classes[0])
+        else:
+            self.out_head = RegressionHead(embed_size=embed_size, dropout=classification_dropout, mlp_scale_classification=mlp_scale_classification)
+
     def forward(self, cat_x, cont_x):
         class_embed, context = self.embeddings(cat_x, cont_x)
 
         x = self.decoder(class_embed, context)
         
-        probability_dist_raw = []
-        for i, e in enumerate(self.classifying_heads):
-            input = x[:, i,:]
-            output = e(input)
-            probability_dist_raw.append(output)
-        
-        return probability_dist_raw
+        # for i, e in enumerate(self.heads):
+        #     input = x[:, i,:]
+        #     output = e(input)
+           
+        output = self.out_head(x)
 
-# Training and Testing Loops
-def train(dataloader, model, loss_function, optimizer, device_in_use):
+        return output
+
+
+# Dataset loaders for different cases
+class Cont_Dataset(Dataset):
+    def __init__(self, df : pd.DataFrame, num_columns,task1_column):
+        self.n = df.shape[0]
+        
+        self.task1_labels = df[task1_column].astype(np.int64).values
+
+        self.num = df[num_columns].astype(np.float32).values
+
+
+    def __len__(self):
+        return self.n
+    
+    def __getitem__(self, idx):
+        # Retrieve features and labels from the dataframe using column names
+        num_features = self.num[idx]
+        labels_task1 = self.task1_labels[idx]
+
+        return num_features, labels_task1
+    
+class Cat_Cont_Dataset(Dataset):
+    def __init__(self, df : pd.DataFrame, cat_columns, num_columns,task1_column):
+        self.n = df.shape[0]
+        
+        self.task1_labels = df[task1_column].astype(np.float32).values
+
+        self.cate = df[cat_columns].astype(np.int64).values
+        self.num = df[num_columns].astype(np.float32).values
+
+
+    def __len__(self):
+        return self.n
+    
+    def __getitem__(self, idx):
+        # Retrieve features and labels from the dataframe using column names
+        cat_features = self.cate[idx]
+        num_features = self.num[idx]
+        labels_task1 = self.task1_labels[idx]
+
+        return cat_features, num_features, labels_task1
+    
+class Combined_Dataset(Dataset):
+    def __init__(self, df: pd.DataFrame, cat_columns, num_columns, task1_column):
+        self.n = df.shape[0]
+
+        self.task1_labels = df[task1_column].astype(np.float32).values
+
+        # If categorical columns exist, load them; otherwise, initialize as an empty tensor
+        if len(cat_columns) > 0:
+            self.cate = df[cat_columns].astype(np.int64).values
+        else:
+            self.cate = torch.empty((self.n, 0))  # Empty tensor when no categorical features
+
+        self.num = df[num_columns].astype(np.float32).values
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, idx):
+        # Retrieve features and labels from the dataframe using column names
+        cat_features = self.cate[idx]
+        num_features = self.num[idx]
+        labels_task1 = self.task1_labels[idx]
+
+        return cat_features, num_features, labels_task1
+    
+def rmse(y_true, y_pred):
+    # Calculate the squared differences
+    squared_diff = (y_true - y_pred)**2
+
+    # Calculate the mean of the squared differences
+    mean_squared_diff = torch.mean(squared_diff)
+
+    # Calculate the square root to obtain RMSE
+    rmse = torch.sqrt(mean_squared_diff)
+
+    return rmse.item()  # Convert to a Python float
+
+#Training and Testing Loops for Different Cases
+def train(regression_on, dataloader, model, loss_function, optimizer, device_in_use):
     model.train()
 
-    total_loss = 0
-
+    total_loss=0
     total_correct_1 = 0
     total_samples_1 = 0
     all_targets_1 = []
     all_predictions_1 = []
 
-    total_correct_2 = 0
-    total_samples_2 = 0
-    all_targets_2 = []
-    all_predictions_2 = []
+    total_rmse = 0
 
-    for (cat_x, cont_x,labels_task1) in dataloader:
-        cat_x,cont_x,labels_task1 = cat_x.to(device_in_use),cont_x.to(device_in_use),labels_task1.to(device_in_use)
+    if not regression_on:
+        for (cat_x, cont_x, labels) in dataloader:
+            cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
+            predictions = model(cat_x, cont_x)
 
-        task_predictions = model(cat_x, cont_x) #contains a list of the tensor outputs for each task
+            loss = loss_function(predictions, labels.long())
+            total_loss+=loss.item()
 
-        loss = loss_function(task_predictions, labels_task1)
-        total_loss += loss.item()
+            #computing accuracy
+            y_pred_softmax_1 = torch.softmax(predictions, dim=1)
+            _, y_pred_labels_1 = torch.max(y_pred_softmax_1, dim=1)
+            total_correct_1 += (y_pred_labels_1 == labels).sum().item()
+            total_samples_1 += labels.size(0)
+            all_targets_1.extend(labels.cpu().numpy())
+            all_predictions_1.extend(y_pred_labels_1.cpu().numpy())
 
-        #computing accuracy for first target
-        y_pred_softmax_1 = torch.softmax(task_predictions[0], dim=1)
-        _, y_pred_labels_1 = torch.max(y_pred_softmax_1, dim=1)
-        total_correct_1 += (y_pred_labels_1 == labels_task1).sum().item()
-        total_samples_1 += labels_task1.size(0)
-        all_targets_1.extend(labels_task1.cpu().numpy())
-        all_predictions_1.extend(y_pred_labels_1.cpu().numpy())
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
 
+        avg_loss = total_loss/len(dataloader)
+        accuracy = total_correct_1 / total_samples_1
 
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+        return avg_loss, accuracy
+    
+    else:
+        for (cat_x, cont_x, labels) in dataloader:
+            cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-    avg_loss = total_loss/len(dataloader)
-    accuracy_1 = total_correct_1 / total_samples_1
-    # accuracy_2 = total_correct_2 / total_samples_2
+            predictions = model(cat_x, cont_x)
 
-    # # precision = precision_score(all_targets, all_predictions, average='weighted')
-    # recall = recall_score(all_targets, all_predictions, average='weighted')
-    # f1 = f1_score(all_targets, all_predictions, average='weighted')
+            loss = loss_function(predictions, labels.unsqueeze(1))
+            total_loss+=loss.item()
 
-    return avg_loss, accuracy_1
+            rmse_value = rmse(labels.unsqueeze(1), predictions)
+            total_rmse+=rmse_value
 
-def test(dataloader, model, loss_function, device_in_use):
-  model.eval()
-  total_loss = 0
-  
-  total_correct_1 = 0
-  total_samples_1 = 0
-  all_targets_1 = []
-  all_predictions_1 = []
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
 
-  total_correct_2 = 0
-  total_samples_2 = 0
-  all_targets_2 = []
-  all_predictions_2 = []
+        avg_loss = total_loss/len(dataloader)
+        avg_rmse = total_rmse/len(dataloader)
 
-  with torch.no_grad():
-    for (cat_x, cont_x,labels_task1) in dataloader:
-        cat_x,cont_x,labels_task1 = cat_x.to(device_in_use),cont_x.to(device_in_use),labels_task1.to(device_in_use)
-
-
-        task_predictions = model(cat_x, cont_x) #contains a list of the tensor outputs for each task
-
-        loss = loss_function(task_predictions, labels_task1)
-        total_loss += loss.item()
-
-        #computing accuracy for first target
-        y_pred_softmax_1 = torch.softmax(task_predictions[0], dim=1)
-        _, y_pred_labels_1 = torch.max(y_pred_softmax_1, dim=1)
-        total_correct_1 += (y_pred_labels_1 == labels_task1).sum().item()
-        total_samples_1 += labels_task1.size(0)
-        all_targets_1.extend(labels_task1.cpu().numpy())
-        all_predictions_1.extend(y_pred_labels_1.cpu().numpy())
-
-
-  avg = total_loss/len(dataloader)
-  accuracy_1 = total_correct_1 / total_samples_1
-  # accuracy_2 = total_correct_2 / total_samples_2
-  # recall = recall_score(all_targets, all_predictions, average='weighted')
-  f1_1 = f1_score(all_targets_1, all_predictions_1, average='weighted')
-  # f1_2 = f1_score(all_targets_2, all_predictions_2, average="weighted")
-
-  return avg, accuracy_1, all_predictions_1, all_targets_1, f1_1
+        return avg_loss, avg_rmse
