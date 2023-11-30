@@ -133,12 +133,12 @@ class ExpFF(nn.Module):
         if len(cat_feat)==0:
             self.cat_feat_on=True
 
-        coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size)
+        coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size//2) #Each feature shares the same set of scaling factors
         coefficients = coefficients.unsqueeze(0)
 
         self.register_buffer('embedding_coefficients', coefficients)
 
-        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)])
+        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
 
         if self.cat_feat_on:
             self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
@@ -152,7 +152,8 @@ class ExpFF(nn.Module):
         temp = []
         for i in range(self.n_cont):
             input = x[:,i,:]
-            out = torch.cat([torch.cos(self.embedding_coefficients * input), torch.sin(self.embedding_coefficients * input)], dim=-1)
+            #(1,80)x(256,1)
+            out = torch.cat([torch.cos(2* torch.pi * self.embedding_coefficients * input), torch.sin(2 * torch.pi * self.embedding_coefficients * input)], dim=-1)
             temp.append(out)
         
         embeddings = []
@@ -397,6 +398,7 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
     if not regression_on:
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
+            print(cont_x.shape)
 
             predictions = model(cat_x, cont_x)
 
@@ -440,3 +442,56 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
         avg_rmse = total_rmse/len(dataloader)
 
         return avg_loss, avg_rmse
+
+def test(regression_on, dataloader, model, loss_function, device_in_use):
+    model.eval()
+
+    total_loss=0
+    total_correct_1 = 0
+    total_samples_1 = 0
+    all_targets_1 = []
+    all_predictions_1 = []
+
+    total_rmse = 0
+
+    if not regression_on:
+        with torch.no_grad():
+            for (cat_x, cont_x, labels) in dataloader:
+                cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
+                print(cont_x.shape)
+
+                predictions = model(cat_x, cont_x)
+
+                loss = loss_function(predictions, labels.long())
+                total_loss+=loss.item()
+
+                #computing accuracy
+                y_pred_softmax_1 = torch.softmax(predictions, dim=1)
+                _, y_pred_labels_1 = torch.max(y_pred_softmax_1, dim=1)
+                total_correct_1 += (y_pred_labels_1 == labels).sum().item()
+                total_samples_1 += labels.size(0)
+                all_targets_1.extend(labels.cpu().numpy())
+                all_predictions_1.extend(y_pred_labels_1.cpu().numpy())
+
+            avg_loss = total_loss/len(dataloader)
+            accuracy = total_correct_1 / total_samples_1
+
+            return avg_loss, accuracy
+    
+    else:
+        with torch.no_grad():
+            for (cat_x, cont_x, labels) in dataloader:
+                cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
+
+                predictions = model(cat_x, cont_x)
+
+                loss = loss_function(predictions, labels.unsqueeze(1))
+                total_loss+=loss.item()
+
+                rmse_value = rmse(labels.unsqueeze(1), predictions)
+                total_rmse+=rmse_value
+
+            avg_loss = total_loss/len(dataloader)
+            avg_rmse = total_rmse/len(dataloader)
+
+            return avg_loss, avg_rmse
