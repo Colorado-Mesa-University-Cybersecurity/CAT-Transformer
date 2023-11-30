@@ -133,12 +133,12 @@ class ExpFF(nn.Module):
         if len(cat_feat)==0:
             self.cat_feat_on=True
 
-        coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size)
+        coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size//2) #Each feature shares the same set of scaling factors
         coefficients = coefficients.unsqueeze(0)
 
         self.register_buffer('embedding_coefficients', coefficients)
 
-        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)])
+        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
 
         if self.cat_feat_on:
             self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
@@ -152,7 +152,8 @@ class ExpFF(nn.Module):
         temp = []
         for i in range(self.n_cont):
             input = x[:,i,:]
-            out = torch.cat([torch.cos(self.embedding_coefficients * input), torch.sin(self.embedding_coefficients * input)], dim=-1)
+            #(1,80)x(256,1)
+            out = torch.cat([torch.cos(2* torch.pi * self.embedding_coefficients * input), torch.sin(2 * torch.pi * self.embedding_coefficients * input)], dim=-1)
             temp.append(out)
         
         embeddings = []
@@ -397,6 +398,7 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
     if not regression_on:
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
+            print(cont_x.shape)
 
             predictions = model(cat_x, cont_x)
 
