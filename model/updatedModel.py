@@ -304,7 +304,6 @@ class CATTransformer(nn.Module):
 
         return output
 
-
 # Dataset loaders for different cases
 class Cont_Dataset(Dataset):
     def __init__(self, df : pd.DataFrame, num_columns,task1_column):
