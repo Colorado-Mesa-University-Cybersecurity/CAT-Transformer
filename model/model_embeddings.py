@@ -138,7 +138,7 @@ class PeriodicActivation(nn.Module):
             self.cat_feat_on=True
 
         if (self.initialization == 'log-linear'):
-            coefficients = self.sigma ** (torch.arange(self.n//2) / (self.n//2))
+            coefficients = self.sigma ** (torch.arange(self.n//2) / (self.n))
             if mixed_on == False:
                 coefficients = coefficients[None].repeat(n_cont, 1)
             else:
@@ -171,12 +171,12 @@ class PeriodicActivation(nn.Module):
         if self.mixed_on == True:
             for i in range(self.n_cont):
                 input = x[:,i,:]
-                out = torch.cat([torch.cos(2 * torch.pi * self.coefficients * input), torch.sin(2 * torch.pi * self.coefficients * input)], dim=-1)
+                out = torch.cat([torch.cos(self.coefficients * input), torch.sin(self.coefficients * input)], dim=-1)
                 temp.append(out)
         else:
             for i in range(self.n_cont):
                 input = x[:,i,:]
-                out = torch.cat([torch.cos(2 * torch.pi * self.coefficients[i,:] * input), torch.sin(2 * torch.pi * self.coefficients[i,:] * input)], dim=-1)
+                out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
                 temp.append(out)
         
         embeddings = []
