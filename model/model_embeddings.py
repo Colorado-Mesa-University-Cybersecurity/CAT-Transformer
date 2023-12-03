@@ -176,7 +176,7 @@ class PeriodicActivation(nn.Module):
         else:
             for i in range(self.n_cont):
                 input = x[:,i,:]
-                out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
+                out = torch.cat([torch.cos(2 * torch.pi* self.coefficients[i,:] * input), torch.sin(2 * torch.pi*self.coefficients[i,:] * input)], dim=-1)
                 temp.append(out)
         
         embeddings = []
