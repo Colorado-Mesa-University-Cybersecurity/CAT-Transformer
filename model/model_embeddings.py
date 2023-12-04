@@ -172,21 +172,22 @@ class PeriodicActivation(nn.Module):
     def forward(self, x_cat, x_cont):
         x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
 
-        temp = []
-        if self.mixed_on == True:
-            for i in range(self.n_cont):
-                input = x[:,i,:]
-                out = torch.cat([torch.cos(self.coefficients * input), torch.sin(self.coefficients * input)], dim=-1)
-                temp.append(out)
-        else:
-            for i in range(self.n_cont):
-                input = x[:,i,:]
-                out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
-                temp.append(out)
+        if self.initialization != 'just_linear':
+            temp = []
+            if self.mixed_on == True:
+                for i in range(self.n_cont):
+                    input = x[:,i,:]
+                    out = torch.cat([torch.cos(self.coefficients * input), torch.sin(self.coefficients * input)], dim=-1)
+                    temp.append(out)
+            else:
+                for i in range(self.n_cont):
+                    input = x[:,i,:]
+                    out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
+                    temp.append(out)
         
         embeddings = []
         if self.linear_on:
-            x = torch.stack(temp, dim=1)
+            # x = torch.stack(temp, dim=1)
             for i, e in enumerate(self.cont_embeddings):
                 goin_in = x[:,i,:]
                 goin_out = e(goin_in)
