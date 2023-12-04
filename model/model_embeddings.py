@@ -171,7 +171,7 @@ class PeriodicActivation(nn.Module):
         if self.mixed_on == True:
             for i in range(self.n_cont):
                 input = x[:,i,:]
-                out = torch.cat([torch.cos(self.coefficients * input), torch.sin(self.coefficients * input)], dim=-1)
+                out = torch.cat([torch.cos(2 * torch.pi*self.coefficients * input), torch.sin(2 * torch.pi*self.coefficients * input)], dim=-1)
                 temp.append(out)
         else:
             for i in range(self.n_cont):
