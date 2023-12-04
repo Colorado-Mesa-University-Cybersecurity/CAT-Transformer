@@ -397,7 +397,6 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
     if not regression_on:
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
-            print(cont_x.shape)
 
             predictions = model(cat_x, cont_x)
 
@@ -457,7 +456,6 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
         with torch.no_grad():
             for (cat_x, cont_x, labels) in dataloader:
                 cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
-                print(cont_x.shape)
 
                 predictions = model(cat_x, cont_x)
 
