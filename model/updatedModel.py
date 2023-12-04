@@ -153,7 +153,7 @@ class ExpFF(nn.Module):
         for i in range(self.n_cont):
             input = x[:,i,:]
             #(1,80)x(256,1)
-            out = torch.cat([torch.cos(2* torch.pi * self.embedding_coefficients * input), torch.sin(2 * torch.pi * self.embedding_coefficients * input)], dim=-1)
+            out = torch.cat([torch.cos(self.embedding_coefficients * input), torch.sin(self.embedding_coefficients * input)], dim=-1)
             temp.append(out)
         
         embeddings = []
