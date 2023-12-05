@@ -122,46 +122,78 @@ class Decoder(nn.Module):
   
         return x 
 
-class ExpFF(nn.Module):
-    def __init__(self, alpha, embed_size, n_cont, cat_feat, num_target_labels):
-        super(ExpFF, self).__init__()
+class PeriodicActivation(nn.Module):
+    def __init__(self, sigma, embed_size, n_cont, cat_feat, num_target_labels,trainable: bool, initialization: str, linear_on:bool, mixed_on:bool):
+        super(PeriodicActivation, self).__init__()
 
-        self.alpha = alpha
-        self.embed_size = embed_size
+        self.n = embed_size
+        self.sigma = sigma
+        self.trainable = trainable
+        self.initialization = initialization
+        self.linear_on = linear_on
         self.n_cont = n_cont
-        self.cat_feat_on = False
+        self.mixed_on = mixed_on
+        self.cat_feat_on=False
         if len(cat_feat)==0:
             self.cat_feat_on=True
 
-        coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size//2) #Each feature shares the same set of scaling factors
-        coefficients = coefficients.unsqueeze(0)
+        goin_in = embed_size
 
-        self.register_buffer('embedding_coefficients', coefficients)
 
-        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
+        if (self.initialization == 'log-linear'):
+            coefficients = self.sigma ** (torch.arange(self.n//2) / (self.n//2))
+            if mixed_on == False:
+                coefficients = coefficients[None].repeat(n_cont, 1)
+            else:
+                coefficients = coefficients[None]
+        elif (self.initialization == 'normal' and self.mixed_on == True):
+            coefficients = torch.normal(0.0, self.sigma, (1, self.n//2))
+        elif (self.initialization == 'normal' and self.mixed_on == False):
+            coefficients = torch.normal(0.0, self.sigma, (n_cont, self.n//2))
+        else:
+            assert(self.initialization == 'just_linear')
+            goin_in = 1
+
+        if (self.trainable == True and self.initialization != 'just_linear'):
+            self.coefficients = nn.Parameter(coefficients)
+        elif (self.trainable == False and self.initialization != 'just_linear'):
+            self.register_buffer('coefficients', coefficients)
+
+        if self.linear_on:
+            self.cont_embeddings = nn.ModuleList([nn.Linear(in_features=goin_in, out_features=embed_size) for _ in range(n_cont)])
 
         if self.cat_feat_on:
             self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
-            
-        #CLS Token
-        self.target_label_embed = nn.ModuleList([nn.Embedding(1, self.embed_size) for _ in range(num_target_labels)])
+
+        # Classifcation Embeddings for each target label
+        self.target_label_embeddings = nn.ModuleList([nn.Embedding(1, embed_size) for _ in range(num_target_labels)])
+
 
     def forward(self, x_cat, x_cont):
         x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
 
-        temp = []
-        for i in range(self.n_cont):
-            input = x[:,i,:]
-            #(1,80)x(256,1)
-            out = torch.cat([torch.cos(self.embedding_coefficients * input), torch.sin(self.embedding_coefficients * input)], dim=-1)
-            temp.append(out)
+        if self.initialization != 'just_linear':
+            temp = []
+            if self.mixed_on == True:
+                for i in range(self.n_cont):
+                    input = x[:,i,:]
+                    out = torch.cat([torch.cos(self.coefficients * input), torch.sin(self.coefficients * input)], dim=-1)
+                    temp.append(out)
+            else:
+                for i in range(self.n_cont):
+                    input = x[:,i,:]
+                    out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
+                    temp.append(out)
         
         embeddings = []
-        x = torch.stack(temp, dim=1)
-        for i, e in enumerate(self.lin_embed):
-            goin_in = x[:,i,:]
-            goin_out = e(goin_in)
-            embeddings.append(goin_out)
+        if self.linear_on:
+            # x = torch.stack(temp, dim=1)
+            for i, e in enumerate(self.cont_embeddings):
+                goin_in = x[:,i,:]
+                goin_out = e(goin_in)
+                embeddings.append(goin_out)
+        else:
+            embeddings = temp
 
         if self.cat_feat_on:
             cat_x = x_cat.unsqueeze(2)
@@ -172,10 +204,11 @@ class ExpFF(nn.Module):
                 embeddings.append(goin_out)
 
         target_label_embeddings_ = []
-        for e in self.target_label_embed:
+        for e in self.target_label_embeddings:
             input = torch.tensor([0], device=x.device)
             temp = e(input)
             temp = temp.repeat(x.size(0), 1)
+            tmep = temp.unsqueeze(1)
             target_label_embeddings_.append(temp)
 
         class_embeddings = torch.stack(target_label_embeddings_, dim=1)
@@ -183,6 +216,68 @@ class ExpFF(nn.Module):
         context = torch.stack(embeddings, dim=1)
 
         return class_embeddings, context
+
+# class ExpFF(nn.Module):
+#     def __init__(self, alpha, embed_size, n_cont, cat_feat, num_target_labels):
+#         super(ExpFF, self).__init__()
+
+#         self.alpha = alpha
+#         self.embed_size = embed_size
+#         self.n_cont = n_cont
+#         self.cat_feat_on = False
+#         if len(cat_feat)==0:
+#             self.cat_feat_on=True
+
+#         coefficients = self.alpha ** (torch.arange(self.embed_size//2) / self.embed_size//2) #Each feature shares the same set of scaling factors
+#         coefficients = coefficients.unsqueeze(0)
+
+#         self.register_buffer('embedding_coefficients', coefficients)
+
+#         self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
+
+#         if self.cat_feat_on:
+#             self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
+            
+#         #CLS Token
+#         self.target_label_embed = nn.ModuleList([nn.Embedding(1, self.embed_size) for _ in range(num_target_labels)])
+
+#     def forward(self, x_cat, x_cont):
+#         x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
+
+#         temp = []
+#         for i in range(self.n_cont):
+#             input = x[:,i,:]
+#             #(1,80)x(256,1)
+#             out = torch.cat([torch.cos(2* torch.pi * self.embedding_coefficients * input), torch.sin(2 * torch.pi * self.embedding_coefficients * input)], dim=-1)
+#             temp.append(out)
+        
+#         embeddings = []
+#         x = torch.stack(temp, dim=1)
+#         for i, e in enumerate(self.lin_embed):
+#             goin_in = x[:,i,:]
+#             goin_out = e(goin_in)
+#             embeddings.append(goin_out)
+
+#         if self.cat_feat_on:
+#             cat_x = x_cat.unsqueeze(2)
+#             for i, e in enumerate(self.cat_embeddings):
+#                 goin_in = cat_x[:,i,:]
+#                 goin_out = e(goin_in)
+#                 goin_out=goin_out.squeeze(1)
+#                 embeddings.append(goin_out)
+
+#         target_label_embeddings_ = []
+#         for e in self.target_label_embed:
+#             input = torch.tensor([0], device=x.device)
+#             temp = e(input)
+#             temp = temp.repeat(x.size(0), 1)
+#             target_label_embeddings_.append(temp)
+
+#         class_embeddings = torch.stack(target_label_embeddings_, dim=1)
+
+#         context = torch.stack(embeddings, dim=1)
+
+#         return class_embeddings, context
 
 class ClassificationHead(nn.Module):
     def __init__(self, embed_size, dropout, mlp_scale_classification, num_target_classes):
@@ -274,14 +369,22 @@ class CATTransformer(nn.Module):
                  pre_norm_on = False,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
-                 targets_classes : list=  [3]
+                 targets_classes : list=  [3],
+                 trainable = False,
+                 initialization = "normal",
+                 linear_on = False,
+                 mixed_on = False
                  ):
         super(CATTransformer, self).__init__()
 
         self.regression_on = regression_on
 
-        self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
-                                num_target_labels=len(targets_classes))
+        # self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+        #                         num_target_labels=len(targets_classes))
+        
+        self.embeddings = PeriodicActivation(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat, num_target_labels=len(targets_classes), 
+                                             trainable=trainable, initialization=initialization, linear_on=linear_on, mixed_on=mixed_on)
+        
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
                                decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on)
         if not regression_on:
@@ -492,3 +595,4 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
             avg_rmse = total_rmse/len(dataloader)
 
             return avg_loss, avg_rmse
+        
