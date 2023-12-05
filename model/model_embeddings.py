@@ -172,7 +172,7 @@ class PeriodicActivation(nn.Module):
     def forward(self, x_cat, x_cont):
         x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
 
-        if self.initialization != 'just_linear':
+        if (self.initialization != 'just_linear'):
             temp = []
             if self.mixed_on == True:
                 for i in range(self.n_cont):
@@ -185,9 +185,10 @@ class PeriodicActivation(nn.Module):
                     out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
                     temp.append(out)
         
+            x = torch.stack(temp, dim=1)
         embeddings = []
         if self.linear_on:
-            # x = torch.stack(temp, dim=1)
+            
             for i, e in enumerate(self.cont_embeddings):
                 goin_in = x[:,i,:]
                 goin_out = e(goin_in)
@@ -214,6 +215,8 @@ class PeriodicActivation(nn.Module):
         class_embeddings = torch.stack(target_label_embeddings_, dim=1)
 
         context = torch.stack(embeddings, dim=1)
+
+
 
         return class_embeddings, context
 
