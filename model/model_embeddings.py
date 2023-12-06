@@ -137,25 +137,30 @@ class PeriodicActivation(nn.Module):
         if len(cat_feat)==0:
             self.cat_feat_on=True
 
+        goin_in = embed_size
+
+
         if (self.initialization == 'log-linear'):
-            coefficients = self.sigma ** (torch.arange(self.n//2) / (self.n))
+            coefficients = self.sigma ** (torch.arange(self.n//2) / (self.n//2))
             if mixed_on == False:
                 coefficients = coefficients[None].repeat(n_cont, 1)
             else:
                 coefficients = coefficients[None]
         elif (self.initialization == 'normal' and self.mixed_on == True):
             coefficients = torch.normal(0.0, self.sigma, (1, self.n//2))
-        else:
-            assert(self.initialization == 'normal')
+        elif (self.initialization == 'normal' and self.mixed_on == False):
             coefficients = torch.normal(0.0, self.sigma, (n_cont, self.n//2))
-
-        if self.trainable:
-            self.coefficients = nn.Parameter(coefficients)
         else:
+            assert(self.initialization == 'just_linear')
+            goin_in = 1
+
+        if (self.trainable == True and self.initialization != 'just_linear'):
+            self.coefficients = nn.Parameter(coefficients)
+        elif (self.trainable == False and self.initialization != 'just_linear'):
             self.register_buffer('coefficients', coefficients)
 
         if self.linear_on:
-            self.cont_embeddings = nn.ModuleList([nn.Linear(in_features=embed_size, out_features=embed_size) for _ in range(n_cont)])
+            self.cont_embeddings = nn.ModuleList([nn.Linear(in_features=goin_in, out_features=embed_size) for _ in range(n_cont)])
 
         if self.cat_feat_on:
             self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
@@ -167,21 +172,23 @@ class PeriodicActivation(nn.Module):
     def forward(self, x_cat, x_cont):
         x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
 
-        temp = []
-        if self.mixed_on == True:
-            for i in range(self.n_cont):
-                input = x[:,i,:]
-                out = torch.cat([torch.cos(2 * torch.pi*self.coefficients * input), torch.sin(2 * torch.pi*self.coefficients * input)], dim=-1)
-                temp.append(out)
-        else:
-            for i in range(self.n_cont):
-                input = x[:,i,:]
-                out = torch.cat([torch.cos(2 * torch.pi* self.coefficients[i,:] * input), torch.sin(2 * torch.pi*self.coefficients[i,:] * input)], dim=-1)
-                temp.append(out)
+        if (self.initialization != 'just_linear'):
+            temp = []
+            if self.mixed_on == True:
+                for i in range(self.n_cont):
+                    input = x[:,i,:]
+                    out = torch.cat([torch.cos(self.coefficients * input), torch.sin(self.coefficients * input)], dim=-1)
+                    temp.append(out)
+            else:
+                for i in range(self.n_cont):
+                    input = x[:,i,:]
+                    out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
+                    temp.append(out)
         
+            x = torch.stack(temp, dim=1)
         embeddings = []
         if self.linear_on:
-            x = torch.stack(temp, dim=1)
+            
             for i, e in enumerate(self.cont_embeddings):
                 goin_in = x[:,i,:]
                 goin_out = e(goin_in)
@@ -208,6 +215,8 @@ class PeriodicActivation(nn.Module):
         class_embeddings = torch.stack(target_label_embeddings_, dim=1)
 
         context = torch.stack(embeddings, dim=1)
+
+
 
         return class_embeddings, context
 
