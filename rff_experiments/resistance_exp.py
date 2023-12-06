@@ -5,7 +5,8 @@
 
 import sys
 # sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
-sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
+# sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
+sys.path.insert(0, '/home/warin/projects/CAT-Transformer/model')
 from model_embeddings import CATTransformer, Combined_Dataset, train, test
 import torch
 import torch.nn as nn
@@ -15,17 +16,21 @@ from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, recall_score, confusion_matrix
 from sklearn.preprocessing import StandardScaler
-device_in_use = 'cuda'
+device_in_use = 'cpu'
 
 
 #HELENA
-df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\train.csv')
-df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\test.csv')
-df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\validation.csv') #READ FROM RIGHT SPOT
+# df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\train.csv')
+# df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\test.csv')
+# df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\validation.csv') #READ FROM RIGHT SPOT
 
 # df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/helena/train.csv')
 # df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/helena/test.csv')
 # df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/helena/validation.csv')
+
+df_train = pd.read_csv('/home/warin/projects/CAT-Transformer/datasets/helena/train.csv')
+df_test = pd.read_csv('/home/warin/projects/CAT-Transformer/datasets/helena/test.csv')
+df_val = pd.read_csv('/home/warin/projects/CAT-Transformer/datasets/helena/validation.csv')
 
 
 # df_train.columns
@@ -466,9 +471,13 @@ print(f"Best accuracy {test_accuracies_1[best_index]}\n",file=open("log_resistan
 # df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/income/test.csv')
 # df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/income/validation.csv') #READ FROM RIGHT SPOT
 
-df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\train.csv')
-df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\test.csv')
-df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\validation.csv') #READ FROM RIGHT SPOT
+# df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\train.csv')
+# df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\test.csv')
+# df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\validation.csv') #READ FROM RIGHT SPOT
+
+df_train = pd.read_csv('/home/warin/projects/CAT-Transformer/datasets/income/train.csv')
+df_test = pd.read_csv('/home/warin/projects/CAT-Transformer/datasets/income/test.csv')
+df_val = pd.read_csv('/home/warin/projects/CAT-Transformer/datasets/income/validation.csv')
 
 cont_columns = ['age', 'fnlwgt', 'education-num', 'capital-gain', 'capital-loss',
        'hours-per-week']
