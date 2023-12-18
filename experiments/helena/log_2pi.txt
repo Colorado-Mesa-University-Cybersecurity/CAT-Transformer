@@ -1,2 +1,4 @@
 Best accuracy 0.22300613496932514
 
+Best accuracy 0.37975460122699384
+
