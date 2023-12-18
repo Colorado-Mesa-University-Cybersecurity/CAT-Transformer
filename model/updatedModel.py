@@ -96,9 +96,12 @@ class Decoder(nn.Module):
                  heads,
                  forward_expansion,
                  decoder_dropout,
-                 pre_norm_on
+                 pre_norm_on,
+                 FT_on
     ):
         super(Decoder, self).__init__()
+
+        self.FT_on = FT_on
 
         self.layers = nn.ModuleList(
                 [
@@ -119,6 +122,8 @@ class Decoder(nn.Module):
             # x is the classification embedding (CLS Token)
             # context are the feature embeddings that will be used as key and value
             x, self.avg_attention = layer(class_embed, context, context)
+            if self.FT_on:
+                x = x[:,0] #Extracting out the CLS token 
   
         return x 
 
@@ -190,35 +195,41 @@ class ClassificationHead(nn.Module):
         
         #flattening the embeddings out so each sample in batch is represented with a 460 dimensional vector
         self.input = embed_size
-        self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
-        self.drop = nn.Dropout(dropout)
-        self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
-        self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
-        self.lin4 = nn.Linear(self.input, num_target_classes)
+        self.lin1 = nn.Linear(self.input, num_target_classes)
+        self.norm = nn.LayerNorm(self.input)
+
+        # self.drop = nn.Dropout(dropout)
+        # self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
+        # self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
+        # self.lin4 = nn.Linear(self.input, num_target_classes)
         self.relu = nn.ReLU()
+
         self.initialize_weights()
 
     def initialize_weights(self): #he_initialization.
         torch.nn.init.kaiming_normal_(self.lin1.weight, nonlinearity='relu')
         torch.nn.init.zeros_(self.lin1.bias)
 
-        torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
-        torch.nn.init.zeros_(self.lin3.bias)
+        # torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
+        # torch.nn.init.zeros_(self.lin3.bias)
 
     def forward(self, x):
 
         x= torch.reshape(x, (-1, self.input))
 
+        x = self.norm(x)
+        x = self.relu(x)
         x = self.lin1(x)
-        x = self.relu(x)
-        x = self.drop(x)
-        x = self.lin2(x)
-        x = self.relu(x)
-        x = self.drop(x)
-        x = self.lin3(x)
-        x = self.relu(x)
-        x = self.drop(x)
-        x = self.lin4(x)
+        # x = self.lin1(x)
+        # x = self.relu(x)
+        # x = self.drop(x)
+        # x = self.lin2(x)
+        # x = self.relu(x)
+        # x = self.drop(x)
+        # x = self.lin3(x)
+        # x = self.relu(x)
+        # x = self.drop(x)
+        # x = self.lin4(x)
   
         return x
 
@@ -228,37 +239,86 @@ class RegressionHead(nn.Module):
         
         #flattening the embeddings out so each sample in batch is represented with a 460 dimensional vector
         self.input = embed_size
-        self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
-        self.drop = nn.Dropout(dropout)
-        self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
-        self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
-        self.lin4 = nn.Linear(self.input, 1)
+        self.lin1 = nn.Linear(self.input, 1)
+        self.norm = nn.LayerNorm(self.input)
+        # self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
+        # self.drop = nn.Dropout(dropout)
+        # self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
+        # self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
+        # self.lin4 = nn.Linear(self.input, 1)
         self.relu = nn.ReLU()
+
+
         self.initialize_weights()
 
     def initialize_weights(self): #he_initialization.
         torch.nn.init.kaiming_normal_(self.lin1.weight, nonlinearity='relu')
         torch.nn.init.zeros_(self.lin1.bias)
 
-        torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
-        torch.nn.init.zeros_(self.lin3.bias)
+        # torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
+        # torch.nn.init.zeros_(self.lin3.bias)
 
     def forward(self, x):
 
         x= torch.reshape(x, (-1, self.input))
 
+        x = self.norm(x)
+        x = self.relu(x)
         x = self.lin1(x)
-        x = self.relu(x)
-        x = self.drop(x)
-        x = self.lin2(x)
-        x = self.relu(x)
-        x = self.drop(x)
-        x = self.lin3(x)
-        x = self.relu(x)
-        x = self.drop(x)
-        x = self.lin4(x)
+        # x = self.lin1(x)
+        # x = self.relu(x)
+        # x = self.drop(x)
+        # x = self.lin2(x)
+        # x = self.relu(x)
+        # x = self.drop(x)
+        # x = self.lin3(x)
+        # x = self.relu(x)
+        # x = self.drop(x)
+        # x = self.lin4(x)
   
         return x
+
+class MyFTTransformer(nn.Module):
+    def __init__(self, 
+                 alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
+                 embed_size=160,
+                 n_cont = 0,
+                 cat_feat:list = [], # ex: [10,4] - 10 categories in the first column, 4 categories in the second column
+                 num_layers=1, #Transformer layers
+                 heads=5, 
+                 forward_expansion=8, # Determines how wide the Linear Layers are the encoder. Its a scaling factor. 
+                 decoder_dropout=0.1,
+                 classification_dropout = 0.1,
+                 pre_norm_on = False,
+                 mlp_scale_classification = 8, #Scaling factor for linear layers in head
+                 regression_on = False,
+                 targets_classes : list=  [3]
+                 ):
+        super(MyFTTransformer, self).__init__()
+
+        self.regression_on = regression_on
+
+        self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+        self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
+                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=True)
+        if not regression_on:
+            self.out_head = ClassificationHead(embed_size=embed_size, dropout=classification_dropout, 
+                                                                   mlp_scale_classification=mlp_scale_classification, 
+                                                                   num_target_classes=targets_classes[0])
+        else:
+            self.out_head = RegressionHead(embed_size=embed_size, dropout=classification_dropout, mlp_scale_classification=mlp_scale_classification)
+
+    def forward(self, cat_x, cont_x):
+        class_embed, context = self.embeddings(cat_x, cont_x)
+
+        x = torch.cat([ class_embed, context], dim = 1) #Concatenate CLS and context together
+
+        x = self.decoder(x, x) # Keys Queries and Values all work with the concatenated tokens
+           
+        output = self.out_head(x)
+
+        return output
 
 class CATTransformer(nn.Module):
     def __init__(self, 
@@ -283,7 +343,7 @@ class CATTransformer(nn.Module):
         self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
                                 num_target_labels=len(targets_classes))
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
-                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on)
+                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=False)
         if not regression_on:
             self.out_head = ClassificationHead(embed_size=embed_size, dropout=classification_dropout, 
                                                                    mlp_scale_classification=mlp_scale_classification, 
@@ -492,3 +552,6 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
             avg_rmse = total_rmse/len(dataloader)
 
             return avg_loss, avg_rmse
+        
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
