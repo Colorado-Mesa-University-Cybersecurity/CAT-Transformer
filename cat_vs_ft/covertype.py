@@ -1,6 +1,6 @@
 import sys
-# sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
-sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
+sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
+# sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
 # sys.path.insert(0, '/home/warin/projects/CAT-Transformer/model')
 from testingModel import CATTransformer, Combined_Dataset, train, test, count_parameters
 from testingModel import MyFTTransformer
@@ -18,13 +18,13 @@ device_in_use = 'cuda'
 
 #GET COVERTYPE
 
-# df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/covertype/train.csv')
-# df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/covertype/test.csv')
-# df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/covertype/validation.csv') #READ FROM RIGHT SPOT
+df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/covertype/train.csv')
+df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/covertype/test.csv')
+df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/covertype/validation.csv') #READ FROM RIGHT SPOT
 
-df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\covertype\train.csv')
-df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\covertype\test.csv')
-df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\covertype\validation.csv') #READ FROM RIGHT
+# df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\covertype\train.csv')
+# df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\covertype\test.csv')
+# df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\covertype\validation.csv') #READ FROM RIGHT
 
 cont_columns = ['Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology',
        'Vertical_Distance_To_Hydrology', 'Horizontal_Distance_To_Roadways',
@@ -76,7 +76,7 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 # Load the object
-with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
+with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'rb') as file:
     evaluation_log = pickle.load(file)
 
 # Adding models, datasets, and metrics
@@ -106,7 +106,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -154,7 +154,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -206,7 +206,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -254,7 +254,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -305,7 +305,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -353,7 +353,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -405,7 +405,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
@@ -453,7 +453,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_acc = train(regression_on=False, 
