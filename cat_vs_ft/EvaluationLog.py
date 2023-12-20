@@ -59,10 +59,10 @@ models = ["CAT", "FT"]
 embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]
 metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
 
-def plot_train_losses(evaluation_log, model_name):
+def plot_train_losses(evaluation_log, model_name, dataset_name):
     plt.figure(figsize=(10, 6))
     for embedding in embedding_techniques:
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, "Helena", "Train Loss")
+        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Train Loss")
         if train_losses:
             plt.plot(range(len(train_losses)), train_losses, label=f"{embedding}")
     plt.title(f"{model_name} Train Losses for Different Embedding Schemes")
@@ -72,10 +72,10 @@ def plot_train_losses(evaluation_log, model_name):
     plt.grid(True)
     plt.show()
 
-def plot_train_accuracies(evaluation_log, model_name):
+def plot_train_accuracies(evaluation_log, model_name, dataset_name):
     plt.figure(figsize=(10, 6))
     for embedding in embedding_techniques:
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, "Helena", "Train Acc")
+        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Train Acc")
         if train_losses:
             plt.plot(range(len(train_losses)), train_losses, label=f"{embedding}")
     plt.title(f"{model_name} Train Accuracies for Different Embedding Schemes")
@@ -85,10 +85,10 @@ def plot_train_accuracies(evaluation_log, model_name):
     plt.grid(True)
     plt.show()
 
-def plot_test_losses(evaluation_log, model_name):
+def plot_test_losses(evaluation_log, model_name, dataset_name):
     plt.figure(figsize=(10, 6))
     for embedding in embedding_techniques:
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, "Helena", "Test Loss")
+        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Test Loss")
         if train_losses:
             plt.plot(range(len(train_losses)), train_losses, label=f"{embedding}")
     plt.title(f"{model_name} Test Losses for Different Embedding Schemes")
@@ -98,10 +98,10 @@ def plot_test_losses(evaluation_log, model_name):
     plt.grid(True)
     plt.show()
 
-def plot_test_accuracies(evaluation_log, model_name):
+def plot_test_accuracies(evaluation_log, model_name, dataset_name):
     plt.figure(figsize=(10, 6))
     for embedding in embedding_techniques:
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, "Helena", "Test Acc")
+        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Test Acc")
         if train_losses:
             plt.plot(range(len(train_losses)), train_losses, label=f"{embedding}")
     plt.title(f"{model_name} Test Accuracies for Different Embedding Schemes")

@@ -15,16 +15,16 @@ metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
 
 # Plot train losses for each model
 for model in models:
-    plot_train_losses(evaluation_log, model)
+    plot_train_losses(evaluation_log, model, "Covertype")
 
 # Plot train losses for each model
 for model in models:
-    plot_train_accuracies(evaluation_log, model)
+    plot_train_accuracies(evaluation_log, model,"Covertype")
 
 # Plot train losses for each model
 for model in models:
-    plot_test_losses(evaluation_log, model)
+    plot_test_losses(evaluation_log, model,"Covertype")
 
 # Plot train losses for each model
 for model in models:
-    plot_test_accuracies(evaluation_log, model)
+    plot_test_accuracies(evaluation_log, model,"Covertype")
