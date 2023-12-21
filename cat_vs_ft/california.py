@@ -18,9 +18,9 @@ device_in_use = 'cuda'
 
 #GET California
 
-df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/higgs/train.csv')
-df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/higgs/test.csv')
-df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/higgs/validation.csv') #READ FROM RIGHT SPOT
+df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/california/train.csv')
+df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/california/test.csv')
+df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/california/validation.csv') #READ FROM RIGHT SPOT
 
 # df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\california\train.csv')
 # df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\california\test.csv')
@@ -102,7 +102,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -151,7 +151,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -204,7 +204,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -253,7 +253,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -305,7 +305,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -354,7 +354,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -407,7 +407,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -456,7 +456,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 1
+epochs = 150
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
