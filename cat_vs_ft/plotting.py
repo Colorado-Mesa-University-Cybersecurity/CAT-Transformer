@@ -10,20 +10,20 @@ models = ["CAT", "FT"]
 embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]
 metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
 
-plot_two_accuracies(evaluation_log, models, "Income", "ConstantPL")
+plot_two_accuracies(evaluation_log, models, "Covertype", "ConstantPL")
 
 # Plot train losses for each model
 for model in models:
-    plot_train_losses(evaluation_log, model, "Income")
+    plot_train_losses(evaluation_log, model, "Covertype")
 
 # Plot train losses for each model
 for model in models:
-    plot_train_accuracies(evaluation_log, model,"Income")
+    plot_train_accuracies(evaluation_log, model,"Covertype")
 
 # Plot train losses for each model
 for model in models:
-    plot_test_losses(evaluation_log, model,"Income")
+    plot_test_losses(evaluation_log, model,"Covertype")
 
 # Plot train losses for each model
 for model in models:
-    plot_test_accuracies(evaluation_log, model,"Income")
+    plot_test_accuracies(evaluation_log, model,"Covertype")
