@@ -59,6 +59,19 @@ models = ["CAT", "FT"]
 embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]
 metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
 
+def plot_two_accuracies(evaluation_log, model_name, dataset_name, embedding):
+    plt.figure(figsize=(10, 6))
+    for model in model_name:
+        test_acc = evaluation_log.get_metric_values(model, embedding, dataset_name, "Test Acc")
+        if test_acc:
+            plt.plot(range(len(test_acc)), test_acc, label=f"{model}")
+    plt.title(f"{model_name} Test Accuracies")
+    plt.xlabel("Epochs")
+    plt.ylabel("Test Accuracy")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
 def plot_train_losses(evaluation_log, model_name, dataset_name):
     plt.figure(figsize=(10, 6))
     for embedding in embedding_techniques:
