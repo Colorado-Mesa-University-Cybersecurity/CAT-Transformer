@@ -127,6 +127,174 @@ class Decoder(nn.Module):
   
         return x 
 
+class lin(nn.Module):
+    def __init__(self, sigma, embed_size, n_cont, cat_feat, num_target_labels):
+        super(lin, self).__init__()
+
+        self.sigma = sigma
+        self.embed_size = embed_size
+        self.n_cont = n_cont
+        self.cat_feat_on = False
+        if len(cat_feat)==0:
+            self.cat_feat_on=True
+
+        self.lin_embed = nn.ModuleList([nn.Linear(in_features=1, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
+
+        if self.cat_feat_on:
+            self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
+            
+        #CLS Token
+        self.target_label_embed = nn.ModuleList([nn.Embedding(1, self.embed_size) for _ in range(num_target_labels)])
+
+    def forward(self, x_cat, x_cont):
+        x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
+        embeddings = []
+        for i, e in enumerate(self.lin_embed):
+            goin_in = x[:,i,:]
+            goin_out = e(goin_in)
+            embeddings.append(goin_out)
+
+        if self.cat_feat_on:
+            cat_x = x_cat.unsqueeze(2)
+            for i, e in enumerate(self.cat_embeddings):
+                goin_in = cat_x[:,i,:]
+                goin_out = e(goin_in)
+                goin_out=goin_out.squeeze(1)
+                embeddings.append(goin_out)
+
+        target_label_embeddings_ = []
+        for e in self.target_label_embed:
+            input = torch.tensor([0], device=x.device)
+            temp = e(input)
+            temp = temp.repeat(x.size(0), 1)
+            target_label_embeddings_.append(temp)
+
+        class_embeddings = torch.stack(target_label_embeddings_, dim=1)
+
+        context = torch.stack(embeddings, dim=1)
+
+        return class_embeddings, context
+
+class ConstantPL(nn.Module):
+    def __init__(self, sigma, embed_size, n_cont, cat_feat, num_target_labels):
+        super(ConstantPL, self).__init__()
+
+        self.sigma = sigma
+        self.embed_size = embed_size
+        self.n_cont = n_cont
+        self.cat_feat_on = False
+        if len(cat_feat)==0:
+            self.cat_feat_on=True
+
+        coefficients = torch.normal(0, self.sigma, (n_cont, self.embed_size//2))
+
+        self.register_buffer('coefficients', coefficients)
+
+        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
+
+        if self.cat_feat_on:
+            self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
+            
+        #CLS Token
+        self.target_label_embed = nn.ModuleList([nn.Embedding(1, self.embed_size) for _ in range(num_target_labels)])
+
+    def forward(self, x_cat, x_cont):
+        x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
+
+        temp = []
+        for i in range(self.n_cont):
+            input = x[:,i,:]
+            out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
+            temp.append(out)
+        
+        embeddings = []
+        x = torch.stack(temp, dim=1)
+        for i, e in enumerate(self.lin_embed):
+            goin_in = x[:,i,:]
+            goin_out = e(goin_in)
+            embeddings.append(goin_out)
+
+        if self.cat_feat_on:
+            cat_x = x_cat.unsqueeze(2)
+            for i, e in enumerate(self.cat_embeddings):
+                goin_in = cat_x[:,i,:]
+                goin_out = e(goin_in)
+                goin_out=goin_out.squeeze(1)
+                embeddings.append(goin_out)
+
+        target_label_embeddings_ = []
+        for e in self.target_label_embed:
+            input = torch.tensor([0], device=x.device)
+            temp = e(input)
+            temp = temp.repeat(x.size(0), 1)
+            target_label_embeddings_.append(temp)
+
+        class_embeddings = torch.stack(target_label_embeddings_, dim=1)
+
+        context = torch.stack(embeddings, dim=1)
+
+        return class_embeddings, context
+
+class PL(nn.Module):
+    def __init__(self, sigma, embed_size, n_cont, cat_feat, num_target_labels):
+        super(PL, self).__init__()
+
+        self.sigma = sigma
+        self.embed_size = embed_size
+        self.n_cont = n_cont
+        self.cat_feat_on = False
+        if len(cat_feat)==0:
+            self.cat_feat_on=True
+
+        coefficients = torch.normal(0, self.sigma, (n_cont, self.embed_size//2))
+
+        self.coefficients = nn.Parameter(coefficients)
+
+        self.lin_embed = nn.ModuleList([nn.Linear(in_features=self.embed_size, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
+
+        if self.cat_feat_on:
+            self.cat_embeddings = nn.ModuleList([nn.Embedding(num_classes, embed_size) for num_classes in cat_feat])
+            
+        #CLS Token
+        self.target_label_embed = nn.ModuleList([nn.Embedding(1, self.embed_size) for _ in range(num_target_labels)])
+
+    def forward(self, x_cat, x_cont):
+        x = x_cont.unsqueeze(2) #(batch_size, n_features) -> (batch_size, n_features, 1)
+
+        temp = []
+        for i in range(self.n_cont):
+            input = x[:,i,:]
+            out = torch.cat([torch.cos(self.coefficients[i,:] * input), torch.sin(self.coefficients[i,:] * input)], dim=-1)
+            temp.append(out)
+        
+        embeddings = []
+        x = torch.stack(temp, dim=1)
+        for i, e in enumerate(self.lin_embed):
+            goin_in = x[:,i,:]
+            goin_out = e(goin_in)
+            embeddings.append(goin_out)
+
+        if self.cat_feat_on:
+            cat_x = x_cat.unsqueeze(2)
+            for i, e in enumerate(self.cat_embeddings):
+                goin_in = cat_x[:,i,:]
+                goin_out = e(goin_in)
+                goin_out=goin_out.squeeze(1)
+                embeddings.append(goin_out)
+
+        target_label_embeddings_ = []
+        for e in self.target_label_embed:
+            input = torch.tensor([0], device=x.device)
+            temp = e(input)
+            temp = temp.repeat(x.size(0), 1)
+            target_label_embeddings_.append(temp)
+
+        class_embeddings = torch.stack(target_label_embeddings_, dim=1)
+
+        context = torch.stack(embeddings, dim=1)
+
+        return class_embeddings, context
+
 class ExpFF(nn.Module):
     def __init__(self, alpha, embed_size, n_cont, cat_feat, num_target_labels):
         super(ExpFF, self).__init__()
@@ -188,6 +356,7 @@ class ExpFF(nn.Module):
         context = torch.stack(embeddings, dim=1)
 
         return class_embeddings, context
+    
 
 class ClassificationHead(nn.Module):
     def __init__(self, embed_size, dropout, mlp_scale_classification, num_target_classes):
@@ -280,6 +449,7 @@ class RegressionHead(nn.Module):
 
 class MyFTTransformer(nn.Module):
     def __init__(self, 
+                 embedding = 'ConstantPL',
                  alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
                  embed_size=160,
                  n_cont = 0,
@@ -298,8 +468,19 @@ class MyFTTransformer(nn.Module):
 
         self.regression_on = regression_on
 
-        self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+        if embedding == 'Exp':
+            self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
                                 num_target_labels=len(targets_classes))
+        elif embedding == 'PL':
+            self.embeddings = PL(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+        elif embedding == 'ConstantPL':
+            self.embeddings = ConstantPL(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+        else:
+            self.embeddings = lin(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+            
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
                                decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=True)
         if not regression_on:
@@ -322,6 +503,7 @@ class MyFTTransformer(nn.Module):
 
 class CATTransformer(nn.Module):
     def __init__(self, 
+                 embedding = 'ConstantPL',
                  alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
                  embed_size=160,
                  n_cont = 0,
@@ -340,8 +522,19 @@ class CATTransformer(nn.Module):
 
         self.regression_on = regression_on
 
-        self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+        if embedding == 'Exp':
+            self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
                                 num_target_labels=len(targets_classes))
+        elif embedding == 'PL':
+            self.embeddings = PL(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+        elif embedding == 'ConstantPL':
+            self.embeddings = ConstantPL(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+        else:
+            self.embeddings = lin(sigma=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
+                                num_target_labels=len(targets_classes))
+            
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
                                decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=False)
         if not regression_on:
