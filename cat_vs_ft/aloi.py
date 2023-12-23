@@ -1,6 +1,6 @@
 import sys
-sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
-# sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
+# sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
+sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
 # sys.path.insert(0, '/home/warin/projects/CAT-Transformer/model')
 from testingModel import CATTransformer, Combined_Dataset, train, test, count_parameters
 from testingModel import MyFTTransformer
@@ -18,13 +18,13 @@ device_in_use = 'cuda'
 
 #GET Aloi
 
-df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/train.csv')
-df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/test.csv')
-df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/validation.csv') #READ FROM RIGHT SPOT
+# df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/train.csv')
+# df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/test.csv')
+# df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/validation.csv') #READ FROM RIGHT SPOT
 
-# df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\train.csv')
-# df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\test.csv')
-# df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\validation.csv') #READ FROM RIGHT
+df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\train.csv')
+df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\test.csv')
+df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\validation.csv') #READ FROM RIGHT
 
 cont_columns = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', 
                 '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', 
@@ -71,11 +71,11 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 # Load the object
-with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'rb') as file:
-    evaluation_log = pickle.load(file)
-
-# with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
+# with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'rb') as file:
 #     evaluation_log = pickle.load(file)
+
+with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
+    evaluation_log = pickle.load(file)
 
 # Adding models, datasets, and metrics
 models = ["CAT", "FT"]
@@ -483,11 +483,11 @@ evaluation_log.add_metric("FT", "Exp","Aloi", "Test Loss", test_losses)
 evaluation_log.add_metric("FT", "Exp","Aloi", "Train Acc", train_accuracies_1)
 evaluation_log.add_metric("FT", "Exp","Aloi", "Test Acc", test_accuracies_1)
 
-# with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'wb') as file:
-#     pickle.dump(evaluation_log, file)
-
-with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'wb') as file:
+with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'wb') as file:
     pickle.dump(evaluation_log, file)
+
+# with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'wb') as file:
+#     pickle.dump(evaluation_log, file)
 
 
 
