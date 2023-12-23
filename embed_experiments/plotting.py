@@ -3,7 +3,7 @@ from EvaluationLog import EvaluationLog, plot_train_losses, plot_train_accuracie
 import pickle
 
 # Load the object
-with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
+with open(r'C:\Users\smbm2\projects\CAT-Transformer\embed_experiments\evaluation_log.pkl', 'rb') as file:
     evaluation_log = pickle.load(file)
 
 dataset = 'Aloi'

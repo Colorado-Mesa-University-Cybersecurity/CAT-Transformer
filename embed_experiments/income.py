@@ -1,6 +1,6 @@
 import sys
-# sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
-sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
+sys.path.insert(0, '/home/cscadmin/CyberResearch/CAT-Transformer/model')
+# sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
 # sys.path.insert(0, '/home/warin/projects/CAT-Transformer/model')
 from testingModel import CATTransformer, Combined_Dataset, train, test, count_parameters
 from testingModel import MyFTTransformer
@@ -16,38 +16,34 @@ import pickle
 from EvaluationLog import EvaluationLog
 device_in_use = 'cuda'
 
-#GET Aloi
+#GET INCOME
 
-# df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/train.csv')
-# df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/test.csv')
-# df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/validation.csv') #READ FROM RIGHT SPOT
+df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/income/train.csv')
+df_test = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/income/test.csv')
+df_val = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/income/validation.csv') #READ FROM RIGHT SPOT
 
-df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\train.csv')
-df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\test.csv')
-df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\aloi\validation.csv') #READ FROM RIGHT
+# df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\train.csv')
+# df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\test.csv')
+# df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\income\validation.csv') #READ FROM RIGHT SPOT
 
-cont_columns = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', 
-                '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', 
-                '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', 
-                '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', 
-                '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', 
-                '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', 
-                '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99', 
-                '100', '101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', 
-                '112', '113', '114', '115', '116', '117', '118', '119', '120', '121', '122', '123', 
-                '124', '125', '126', '127']
-target = ['target']
+cont_columns = ['age', 'fnlwgt', 'education-num', 'capital-gain', 'capital-loss',
+       'hours-per-week']
+cat_columns = ['workclass', 'education', 'marital-status', 'occupation',
+       'relationship', 'race', 'sex', 'native-country']
+target = ['income']
 
 #CHECKING TO MAKE SURE YOUR LIST IS CORRECT (NO NEED TO TOUCH)
-yourlist = cont_columns + target
+yourlist = cont_columns + cat_columns+target
 yourlist.sort()
 oglist = list(df_train.columns)
 oglist.sort()
 
 assert(yourlist == oglist), "You may of spelled feature name wrong or you forgot to put on of them in the list"
 
+cat_features = (10,16,7,16,6,5,2,43)
+
 target_classes = [max(len(df_train[target].value_counts()), len(df_val[target].value_counts()),len(df_test[target].value_counts()))]
-print(target_classes)
+
 # Create a StandardScaler and fit it to the cont features
 scaler = StandardScaler()
 scaler.fit(df_train[cont_columns])
@@ -58,9 +54,9 @@ df_test[cont_columns] = scaler.transform(df_test[cont_columns])
 df_val[cont_columns] = scaler.transform(df_val[cont_columns])
 
 #Wrapping in Dataset
-train_dataset = Combined_Dataset(df_train, cat_columns=[], num_columns=cont_columns, task1_column='target')
-val_dataset = Combined_Dataset(df_val, cat_columns=[], num_columns=cont_columns, task1_column='target')
-test_dataset = Combined_Dataset(df_test, cat_columns=[], num_columns=cont_columns, task1_column='target')
+train_dataset = Combined_Dataset(df_train, cat_columns=cat_columns, num_columns=cont_columns, task1_column='income')
+val_dataset = Combined_Dataset(df_val, cat_columns=cat_columns, num_columns=cont_columns, task1_column='income')
+test_dataset = Combined_Dataset(df_test, cat_columns=cat_columns, num_columns=cont_columns, task1_column='income')
 
 #This is a hyperparameter that is not tuned. Maybe mess with what makes sense here
 batch_size = 256
@@ -71,19 +67,19 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 # Load the object
-# with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'rb') as file:
-#     evaluation_log = pickle.load(file)
-
-with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
+with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'rb') as file:
     evaluation_log = pickle.load(file)
+
+# with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
+#     evaluation_log = pickle.load(file)
 
 # Adding models, datasets, and metrics
 models = ["CAT", "FT"]
 embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]
-datasets = ["Helena", "Covertype"]
+datasets = ["Helena", "Covertype", "Higgs", "Income"]
 metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
 
-evaluation_log.add_new_dataset("Aloi")
+evaluation_log.add_new_dataset("Income")
 
 
 ########################################################################################################################################################################
@@ -91,7 +87,7 @@ evaluation_log.add_new_dataset("Aloi")
 #CAT
 cat_model = CATTransformer(embedding='Linear',
                            n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -131,16 +127,16 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("CAT", "L","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("CAT", "L","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("CAT", "L","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("CAT", "L","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("CAT", "L","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("CAT", "L","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("CAT", "L","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("CAT", "L","Income", "Test Acc", test_accuracies_1)
 
 
 #FT
 ft_model = MyFTTransformer(embedding='Linear',
                             n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -179,10 +175,10 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("FT", "L","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("FT", "L","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("FT", "L","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("FT", "L","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("FT", "L","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("FT", "L","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("FT", "L","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("FT", "L","Income", "Test Acc", test_accuracies_1)
 
 
 ####################################################################################################################################################################################################################################
@@ -191,7 +187,7 @@ evaluation_log.add_metric("FT", "L","Aloi", "Test Acc", test_accuracies_1)
 #CAT
 cat_model = CATTransformer(embedding='PL',
                            n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -231,16 +227,16 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("CAT", "PL","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("CAT", "PL","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("CAT", "PL","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("CAT", "PL","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("CAT", "PL","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("CAT", "PL","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("CAT", "PL","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("CAT", "PL","Income", "Test Acc", test_accuracies_1)
 
 
 #FT
 ft_model = MyFTTransformer(embedding='PL',
                             n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -279,10 +275,10 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("FT", "PL","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("FT", "PL","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("FT", "PL","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("FT", "PL","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("FT", "PL","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("FT", "PL","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("FT", "PL","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("FT", "PL","Income", "Test Acc", test_accuracies_1)
 
 ####################################################################################################################################################################################################################################
 
@@ -290,7 +286,7 @@ evaluation_log.add_metric("FT", "PL","Aloi", "Test Acc", test_accuracies_1)
 #CAT
 cat_model = CATTransformer(embedding='ConstantPL',
                            n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -330,16 +326,16 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("CAT", "ConstantPL","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("CAT", "ConstantPL","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("CAT", "ConstantPL","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("CAT", "ConstantPL","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("CAT", "ConstantPL","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("CAT", "ConstantPL","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("CAT", "ConstantPL","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("CAT", "ConstantPL","Income", "Test Acc", test_accuracies_1)
 
 
 #FT
 ft_model = MyFTTransformer(embedding='ConstantPL',
                             n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -378,10 +374,10 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("FT", "ConstantPL","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("FT", "ConstantPL","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("FT", "ConstantPL","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("FT", "ConstantPL","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("FT", "ConstantPL","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("FT", "ConstantPL","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("FT", "ConstantPL","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("FT", "ConstantPL","Income", "Test Acc", test_accuracies_1)
 
 
 ####################################################################################################################################################################################################################################
@@ -390,7 +386,7 @@ evaluation_log.add_metric("FT", "ConstantPL","Aloi", "Test Acc", test_accuracies
 #CAT
 cat_model = CATTransformer(embedding='Exp',
                            n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -430,16 +426,16 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("CAT", "Exp","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("CAT", "Exp","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("CAT", "Exp","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("CAT", "Exp","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("CAT", "Exp","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("CAT", "Exp","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("CAT", "Exp","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("CAT", "Exp","Income", "Test Acc", test_accuracies_1)
 
 
 #FT
 ft_model = MyFTTransformer(embedding='Exp',
                             n_cont=len(cont_columns),
-                       cat_feat=[], 
+                       cat_feat=cat_columns, 
                        targets_classes=target_classes,
                        embed_size=160
                        ).to(device_in_use)
@@ -478,16 +474,16 @@ for t in range(epochs):
 best_index = test_accuracies_1.index(max(test_accuracies_1))
 print(f"Best accuracy {test_accuracies_1[best_index]}")
 
-evaluation_log.add_metric("FT", "Exp","Aloi", "Train Loss", train_losses)
-evaluation_log.add_metric("FT", "Exp","Aloi", "Test Loss", test_losses)
-evaluation_log.add_metric("FT", "Exp","Aloi", "Train Acc", train_accuracies_1)
-evaluation_log.add_metric("FT", "Exp","Aloi", "Test Acc", test_accuracies_1)
+evaluation_log.add_metric("FT", "Exp","Income", "Train Loss", train_losses)
+evaluation_log.add_metric("FT", "Exp","Income", "Test Loss", test_losses)
+evaluation_log.add_metric("FT", "Exp","Income", "Train Acc", train_accuracies_1)
+evaluation_log.add_metric("FT", "Exp","Income", "Test Acc", test_accuracies_1)
 
-with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'wb') as file:
-    pickle.dump(evaluation_log, file)
-
-# with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'wb') as file:
+# with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'wb') as file:
 #     pickle.dump(evaluation_log, file)
+
+with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'wb') as file:
+    pickle.dump(evaluation_log, file)
 
 
 
