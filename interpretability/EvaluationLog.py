@@ -1,59 +1,53 @@
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
 
-
-class EvaluationLog:
+class AttentionScoresLog:
     def __init__(self):
-        self.log = {}  # Dictionary to store data: {model_name: {embedding_technique: {dataset_name: {metric_name: [values]}}}}
+        self.log = {}  # {model_name: {num_layers: {dataset_name: {'train_scores': [], 'test_scores': []}}}}
 
-    def add_model(self, model_name):
+    def add_model_layers(self, model_name, num_layers):
         if model_name not in self.log:
             self.log[model_name] = {}
+        if num_layers not in self.log[model_name]:
+            self.log[model_name][num_layers] = {}
 
-    def add_embedding_technique(self, model_name, embedding_technique):
-        if model_name not in self.log:
-            self.add_model(model_name)
-        if embedding_technique not in self.log[model_name]:
-            self.log[model_name][embedding_technique] = {}
+    def add_dataset(self, model_name, num_layers, dataset_name):
+        if model_name in self.log and num_layers in self.log[model_name]:
+            if dataset_name not in self.log[model_name][num_layers]:
+                self.log[model_name][num_layers][dataset_name] = {'train_scores': [], 'test_scores': []}
 
-    def add_dataset(self, model_name, embedding_technique, dataset_name):
-        if model_name not in self.log:
-            self.add_model(model_name)
-        if embedding_technique not in self.log[model_name]:
-            self.add_embedding_technique(model_name, embedding_technique)
-        if dataset_name not in self.log[model_name][embedding_technique]:
-            self.log[model_name][embedding_technique][dataset_name] = {}
+    def add_attention_scores(self, model_name, num_layers, dataset_name, train_scores, test_scores):
+        if model_name in self.log and num_layers in self.log[model_name] \
+                and dataset_name in self.log[model_name][num_layers]:
+            self.log[model_name][num_layers][dataset_name]['train_scores'].append(train_scores)
+            self.log[model_name][num_layers][dataset_name]['test_scores'].append(test_scores)
 
-    def add_metric(self, model_name, embedding_technique, dataset_name, metric_name, values):
-        if model_name not in self.log:
-            self.add_model(model_name)
-        if embedding_technique not in self.log[model_name]:
-            self.add_embedding_technique(model_name, embedding_technique)
-        if dataset_name not in self.log[model_name][embedding_technique]:
-            self.add_dataset(model_name, embedding_technique, dataset_name)
-        if metric_name not in self.log[model_name][embedding_technique][dataset_name]:
-            self.log[model_name][embedding_technique][dataset_name][metric_name] = []
-        self.log[model_name][embedding_technique][dataset_name][metric_name].extend(values)
-
-    def get_metric_values(self, model_name, embedding_technique, dataset_name, metric_name):
-        if model_name in self.log and embedding_technique in self.log[model_name] \
-                and dataset_name in self.log[model_name][embedding_technique] \
-                and metric_name in self.log[model_name][embedding_technique][dataset_name]:
-            return self.log[model_name][embedding_technique][dataset_name][metric_name]
+    def get_attention_scores(self, model_name, num_layers, dataset_name):
+        if model_name in self.log and num_layers in self.log[model_name] \
+                and dataset_name in self.log[model_name][num_layers]:
+            return self.log[model_name][num_layers][dataset_name]['train_scores'], \
+                   self.log[model_name][num_layers][dataset_name]['test_scores']
         else:
-            return None
+            return None, None
 
     def add_new_dataset(self, dataset_name):
         for model in self.log:
-            for embedding in self.log[model]:
-                self.add_dataset(model, embedding, dataset_name)
+            for layers in self.log[model]:
+                self.add_dataset(model, layers, dataset_name)
 
-    def add_metric_for_dataset(self, model_name, embedding_technique, dataset_name, metric_name, values):
-        if model_name in self.log and embedding_technique in self.log[model_name] \
-                and dataset_name in self.log[model_name][embedding_technique]:
-            if metric_name not in self.log[model_name][embedding_technique][dataset_name]:
-                self.log[model_name][embedding_technique][dataset_name][metric_name] = []
-            self.log[model_name][embedding_technique][dataset_name][metric_name].extend(values)
+    def save_log_as_pickle(self, filename):
+        with open(filename, 'wb') as file:
+            pickle.dump(self.log, file)
 
-import matplotlib.pyplot as plt
+    @classmethod
+    def load_log_from_pickle(cls, filename):
+        instance = cls()
+        with open(filename, 'rb') as file:
+            instance.log = pickle.load(file)
+        return instance
+
+
 
 models = ["CAT", "FT"]
 embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]

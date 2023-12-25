@@ -97,11 +97,14 @@ class Decoder(nn.Module):
                  forward_expansion,
                  decoder_dropout,
                  pre_norm_on,
-                 FT_on
+                 FT_on,
+                 get_attn
     ):
         super(Decoder, self).__init__()
 
         self.FT_on = FT_on
+
+        self.get_attn = get_attn
 
         self.layers = nn.ModuleList(
                 [
@@ -115,17 +118,20 @@ class Decoder(nn.Module):
                     for _ in range(num_layers)
                 ]
             )
-        self.avg_attention = None
 
     def forward(self, class_embed, context):
+        attention_scores = []
         for layer in self.layers:
             # x is the classification embedding (CLS Token)
             # context are the feature embeddings that will be used as key and value
-            x, self.avg_attention = layer(class_embed, context, context)
+            x, attention = layer(class_embed, context, context)
+            attention_scores.append(attention)
             if self.FT_on:
                 x = x[:,0] #Extracting out the CLS token 
-  
-        return x 
+        
+        if self.get_attn:
+            return x, torch.stack(attention_scores)
+        return x
 
 class lin(nn.Module):
     def __init__(self, sigma, embed_size, n_cont, cat_feat, num_target_labels):
@@ -462,11 +468,14 @@ class MyFTTransformer(nn.Module):
                  pre_norm_on = False,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
-                 targets_classes : list=  [3]
+                 targets_classes : list=  [3],
+                 get_attn = False
                  ):
         super(MyFTTransformer, self).__init__()
 
         self.regression_on = regression_on
+
+        self.get_attn = get_attn
 
         if embedding == 'Exp':
             self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
@@ -482,7 +491,7 @@ class MyFTTransformer(nn.Module):
                                 num_target_labels=len(targets_classes))
             
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
-                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=True)
+                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=True, get_attn=self.get_attn)
         if not regression_on:
             self.out_head = ClassificationHead(embed_size=embed_size, dropout=classification_dropout, 
                                                                    mlp_scale_classification=mlp_scale_classification, 
@@ -495,11 +504,14 @@ class MyFTTransformer(nn.Module):
 
         x = torch.cat([ class_embed, context], dim = 1) #Concatenate CLS and context together
 
-        x = self.decoder(x, x) # Keys Queries and Values all work with the concatenated tokens
-           
+        if self.get_attn:
+            x, avg_attention = self.decoder(x, x) # Keys Queries and Values all work with the concatenated tokens
+        else:
+            x = self.decoder(x,x)
+
         output = self.out_head(x)
 
-        return output
+        return output, avg_attention
 
 class CATTransformer(nn.Module):
     def __init__(self, 
@@ -516,11 +528,14 @@ class CATTransformer(nn.Module):
                  pre_norm_on = False,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
-                 targets_classes : list=  [3]
+                 targets_classes : list=  [3],
+                 get_attn = False
                  ):
         super(CATTransformer, self).__init__()
 
         self.regression_on = regression_on
+
+        self.get_attn = get_attn
 
         if embedding == 'Exp':
             self.embeddings = ExpFF(alpha=alpha, embed_size=embed_size, n_cont=n_cont, cat_feat=cat_feat,
@@ -536,7 +551,7 @@ class CATTransformer(nn.Module):
                                 num_target_labels=len(targets_classes))
             
         self.decoder = Decoder(embed_size=embed_size, num_layers=num_layers, heads=heads, forward_expansion=forward_expansion, 
-                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=False)
+                               decoder_dropout=decoder_dropout, pre_norm_on=pre_norm_on, FT_on=False, get_attn=self.get_attn)
         if not regression_on:
             self.out_head = ClassificationHead(embed_size=embed_size, dropout=classification_dropout, 
                                                                    mlp_scale_classification=mlp_scale_classification, 
@@ -547,7 +562,10 @@ class CATTransformer(nn.Module):
     def forward(self, cat_x, cont_x):
         class_embed, context = self.embeddings(cat_x, cont_x)
 
-        x = self.decoder(class_embed, context)
+        if self.get_attn:
+            x, avg_attention = self.decoder(class_embed, context)
+        else:
+            x = self.decoder(class_embed, context)
         
         # for i, e in enumerate(self.heads):
         #     input = x[:, i,:]
@@ -555,7 +573,7 @@ class CATTransformer(nn.Module):
            
         output = self.out_head(x)
 
-        return output
+        return output, avg_attention
 
 # Dataset loaders for different cases
 class Cont_Dataset(Dataset):
@@ -636,7 +654,7 @@ def rmse(y_true, y_pred):
     return rmse.item()  # Convert to a Python float
 
 #Training and Testing Loops for Different Cases
-def train(regression_on, dataloader, model, loss_function, optimizer, device_in_use):
+def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, device_in_use):
     model.train()
 
     total_loss=0
@@ -645,13 +663,19 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
     all_targets_1 = []
     all_predictions_1 = []
 
+    attention_ovr_batch = []
+
     total_rmse = 0
 
     if not regression_on:
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-            predictions = model(cat_x, cont_x)
+            if get_attn:
+                predictions, attention = model(cat_x, cont_x)
+                attention_ovr_batch.append(attention.detach().cpu().numpy())
+            else:
+                predictions = model(cat_x, cont_x)
 
             loss = loss_function(predictions, labels.long())
             total_loss+=loss.item()
@@ -671,13 +695,17 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
         avg_loss = total_loss/len(dataloader)
         accuracy = total_correct_1 / total_samples_1
 
-        return avg_loss, accuracy
+        return avg_loss, accuracy, attention_ovr_batch
     
     else:
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-            predictions = model(cat_x, cont_x)
+            if get_attn:
+                predictions, attention = model(cat_x, cont_x)
+                attention_ovr_batch.append(attention.detach().cpu().numpy())
+            else:
+                predictions = model(cat_x, cont_x)
 
             loss = loss_function(predictions, labels.unsqueeze(1))
             total_loss+=loss.item()
@@ -692,9 +720,9 @@ def train(regression_on, dataloader, model, loss_function, optimizer, device_in_
         avg_loss = total_loss/len(dataloader)
         avg_rmse = total_rmse/len(dataloader)
 
-        return avg_loss, avg_rmse
+        return avg_loss, avg_rmse, attention_ovr_batch
 
-def test(regression_on, dataloader, model, loss_function, device_in_use):
+def test(get_attn, regression_on, dataloader, model, loss_function, device_in_use):
     model.eval()
 
     total_loss=0
@@ -703,6 +731,8 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
     all_targets_1 = []
     all_predictions_1 = []
 
+    attention_ovr_batch = []
+
     total_rmse = 0
 
     if not regression_on:
@@ -710,7 +740,11 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
             for (cat_x, cont_x, labels) in dataloader:
                 cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-                predictions = model(cat_x, cont_x)
+                if get_attn:
+                    predictions, attention = model(cat_x, cont_x)
+                    attention_ovr_batch.append(attention.detach().cpu().numpy())
+                else:
+                    predictions = model(cat_x, cont_x)
 
                 loss = loss_function(predictions, labels.long())
                 total_loss+=loss.item()
@@ -726,14 +760,18 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
             avg_loss = total_loss/len(dataloader)
             accuracy = total_correct_1 / total_samples_1
 
-            return avg_loss, accuracy
+            return avg_loss, accuracy, attention_ovr_batch
     
     else:
         with torch.no_grad():
             for (cat_x, cont_x, labels) in dataloader:
                 cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-                predictions = model(cat_x, cont_x)
+                if get_attn:
+                    predictions, attention = model(cat_x, cont_x)
+                    attention_ovr_batch.append(attention.detach().cpu().numpy())
+                else:
+                    predictions = model(cat_x, cont_x)
 
                 loss = loss_function(predictions, labels.unsqueeze(1))
                 total_loss+=loss.item()
@@ -744,7 +782,45 @@ def test(regression_on, dataloader, model, loss_function, device_in_use):
             avg_loss = total_loss/len(dataloader)
             avg_rmse = total_rmse/len(dataloader)
 
-            return avg_loss, avg_rmse
+            return avg_loss, avg_rmse, attention_ovr_batch
         
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+#Made with GPT3.5
+class EarlyStopping:
+    def __init__(self, patience=5, delta=0, verbose=False, path='checkpoint.pt'):
+        self.patience = patience  # Number of epochs to wait for improvement
+        self.delta = delta  # Minimum change in monitored quantity to qualify as improvement
+        self.verbose = verbose  # Whether to print information about the early stopping
+        self.path = path  # Path to save the best model
+
+        self.counter = 0  # Counter to keep track of epochs without improvement
+        self.best_score = None  # Best validation score
+        self.early_stop = False  # Flag to indicate if training should stop
+
+    def __call__(self, val_score, model):
+        if self.best_score is None:
+            self.best_score = val_score
+            self.save_checkpoint(model)
+        elif val_score < self.best_score + self.delta:
+            self.counter += 1
+            if self.verbose:
+                print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = val_score
+            self.save_checkpoint(model)
+            self.counter = 0
+
+    def save_checkpoint(self, model):
+        if self.verbose:
+            print('Validation score improved. Saving model...')
+        torch.save(model.state_dict(), self.path)
+
+    def load_checkpoint(self, model):
+        model.load_state_dict(torch.load(self.path))
+        model.eval()
+
+
