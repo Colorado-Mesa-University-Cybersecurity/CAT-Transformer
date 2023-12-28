@@ -121,8 +121,11 @@ def attn_entropy_get(log:EntropyLog, trained_model, model_name, num_layers, data
         class_train_dataset = Combined_Dataset(class_train_samples, cat_columns=cat_columns, num_columns=num_columns, task1_column=target)
         class_test_dataset = Combined_Dataset(class_test_samples, cat_columns=cat_columns, num_columns=num_columns, task1_column=target)
 
-        class_train_dataloader = DataLoader(class_train_dataset, batch_size=len(class_train_dataset))
-        class_test_dataloader = DataLoader(class_test_dataset, batch_size=len(class_test_dataset))
+        # class_train_dataloader = DataLoader(class_train_dataset, batch_size=len(class_train_dataset))
+        # class_test_dataloader = DataLoader(class_test_dataset, batch_size=len(class_test_dataset))
+
+        class_train_dataloader = DataLoader(class_train_dataset, batch_size=256)
+        class_test_dataloader = DataLoader(class_test_dataset, batch_size=256)
              
         train_acc, train_attn = evaluate(trained_model, class_train_dataloader, device_in_use)
         train_attn = train_attn.mean(0)

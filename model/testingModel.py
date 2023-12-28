@@ -711,6 +711,8 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
             optimizer.step()
             optimizer.zero_grad()
 
+            torch.cuda.empty_cache()
+
         avg_loss = total_loss/len(dataloader)
         accuracy = total_correct_1 / total_samples_1
 
@@ -738,6 +740,8 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
+
+            torch.cuda.empty_cache()
 
         avg_loss = total_loss/len(dataloader)
         avg_rmse = total_rmse/len(dataloader)
@@ -782,6 +786,8 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
                 all_targets_1.extend(labels.cpu().numpy())
                 all_predictions_1.extend(y_pred_labels_1.cpu().numpy())
 
+                torch.cuda.empty_cache()
+
             avg_loss = total_loss/len(dataloader)
             accuracy = total_correct_1 / total_samples_1
 
@@ -806,6 +812,8 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
 
                 rmse_value = rmse(labels.unsqueeze(1), predictions)
                 total_rmse+=rmse_value
+
+                torch.cuda.empty_cache()
 
             avg_loss = total_loss/len(dataloader)
             avg_rmse = total_rmse/len(dataloader)

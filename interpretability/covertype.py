@@ -97,7 +97,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -148,7 +148,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -206,7 +206,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -257,7 +257,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -315,7 +315,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -366,7 +366,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -424,7 +424,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -475,7 +475,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 250
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
