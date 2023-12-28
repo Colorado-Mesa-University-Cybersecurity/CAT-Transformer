@@ -33,13 +33,26 @@ class MultiHeadAttention(nn.Module):
 
         energy = torch.einsum("nqhd,nkhd->nhqk", [queries, keys])
 
-        attention = torch.softmax(energy / (self.embed_size ** (1/2)), dim=3) #(batch_size, head_dim, #query_embeddings, #key_embeddings)
+        attention = torch.softmax(energy / (self.embed_size ** (1/2)), dim=3) #(batch_size, head_dim, #query_embeddings, attention maps)
 
-        # Calculate simplified attention scores
-        avg_attention = attention.mean(dim=0)  # Average across batches
-        # print("batch average", avg_attention.shape)
-        avg_attention = avg_attention.mean(dim=0).squeeze(dim=0)
-        # print("head average", avg_attention.shape)
+        #If FT, then query_embeddings = # attention maps
+        if(attention.shape[-1] == attention.shape[-2]):
+            #We only want the CLS Token's attention maps
+            energy_temp = energy[:,:,0,1:key_len].unsqueeze(2)
+            attention_temp = torch.softmax(energy_temp / (self.embed_size ** (1/2)), dim=3)
+            # print("cls attention", cls_attention.shape)
+            avg_attention = attention_temp.mean(0)
+            # print("cls attention", avg_attention.shape)
+            avg_attention = avg_attention.mean(0)
+            # print("cls attention", avg_attention.shape)
+
+        else:
+            # Calculate simplified attention scores
+            avg_attention = attention.mean(0)  # Average across batches
+            # print("batch average", avg_attention.shape)
+            avg_attention = avg_attention.mean(0).squeeze(dim=0)
+            # print("head average", avg_attention.shape)
+
 
         out = torch.einsum("nhql,nlhd->nqhd", [attention, values]).reshape(N, query_len, self.heads*self.head_dim) #(batch_size, n_features, embed_size)
         out = self.fc_out(out)
@@ -141,7 +154,7 @@ class lin(nn.Module):
         self.embed_size = embed_size
         self.n_cont = n_cont
         self.cat_feat_on = False
-        if len(cat_feat)==0:
+        if len(cat_feat)!=0:
             self.cat_feat_on=True
 
         self.lin_embed = nn.ModuleList([nn.Linear(in_features=1, out_features=self.embed_size) for _ in range(n_cont)]) # each feature gets its own linear layer
@@ -189,7 +202,7 @@ class ConstantPL(nn.Module):
         self.embed_size = embed_size
         self.n_cont = n_cont
         self.cat_feat_on = False
-        if len(cat_feat)==0:
+        if len(cat_feat)!=0:
             self.cat_feat_on=True
 
         coefficients = torch.normal(0, self.sigma, (n_cont, self.embed_size//2))
@@ -249,7 +262,7 @@ class PL(nn.Module):
         self.embed_size = embed_size
         self.n_cont = n_cont
         self.cat_feat_on = False
-        if len(cat_feat)==0:
+        if len(cat_feat)!=0:
             self.cat_feat_on=True
 
         coefficients = torch.normal(0, self.sigma, (n_cont, self.embed_size//2))
@@ -511,7 +524,10 @@ class MyFTTransformer(nn.Module):
 
         output = self.out_head(x)
 
-        return output, avg_attention
+        if self.get_attn:
+            return output, avg_attention
+        else:
+            return output
 
 class CATTransformer(nn.Module):
     def __init__(self, 
@@ -573,7 +589,10 @@ class CATTransformer(nn.Module):
            
         output = self.out_head(x)
 
-        return output, avg_attention
+        if self.get_attn:
+            return output, avg_attention
+        else:
+            return output
 
 # Dataset loaders for different cases
 class Cont_Dataset(Dataset):
@@ -695,7 +714,10 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
         avg_loss = total_loss/len(dataloader)
         accuracy = total_correct_1 / total_samples_1
 
-        return avg_loss, accuracy, attention_ovr_batch
+        if get_attn:
+            return avg_loss, accuracy, attention_ovr_batch
+        else:
+            return avg_loss, accuracy
     
     else:
         for (cat_x, cont_x, labels) in dataloader:
@@ -720,7 +742,10 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
         avg_loss = total_loss/len(dataloader)
         avg_rmse = total_rmse/len(dataloader)
 
-        return avg_loss, avg_rmse, attention_ovr_batch
+        if get_attn:
+            return avg_loss, accuracy, attention_ovr_batch
+        else:
+            return avg_loss, accuracy
 
 def test(get_attn, regression_on, dataloader, model, loss_function, device_in_use):
     model.eval()
@@ -760,7 +785,10 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
             avg_loss = total_loss/len(dataloader)
             accuracy = total_correct_1 / total_samples_1
 
-            return avg_loss, accuracy, attention_ovr_batch
+            if get_attn:
+                return avg_loss, accuracy, attention_ovr_batch
+            else:
+                return avg_loss, accuracy
     
     else:
         with torch.no_grad():
@@ -782,27 +810,28 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
             avg_loss = total_loss/len(dataloader)
             avg_rmse = total_rmse/len(dataloader)
 
-            return avg_loss, avg_rmse, attention_ovr_batch
+            if get_attn:
+                return avg_loss, accuracy, attention_ovr_batch
+            else:
+                return avg_loss, accuracy
         
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-#Made with GPT3.5
+#Made with GPT
 class EarlyStopping:
-    def __init__(self, patience=5, delta=0, verbose=False, path='checkpoint.pt'):
+    def __init__(self, patience=5, delta=0, verbose=False):
         self.patience = patience  # Number of epochs to wait for improvement
         self.delta = delta  # Minimum change in monitored quantity to qualify as improvement
         self.verbose = verbose  # Whether to print information about the early stopping
-        self.path = path  # Path to save the best model
 
         self.counter = 0  # Counter to keep track of epochs without improvement
         self.best_score = None  # Best validation score
         self.early_stop = False  # Flag to indicate if training should stop
 
-    def __call__(self, val_score, model):
+    def __call__(self, val_score):
         if self.best_score is None:
             self.best_score = val_score
-            self.save_checkpoint(model)
         elif val_score < self.best_score + self.delta:
             self.counter += 1
             if self.verbose:
@@ -811,16 +840,6 @@ class EarlyStopping:
                 self.early_stop = True
         else:
             self.best_score = val_score
-            self.save_checkpoint(model)
             self.counter = 0
-
-    def save_checkpoint(self, model):
-        if self.verbose:
-            print('Validation score improved. Saving model...')
-        torch.save(model.state_dict(), self.path)
-
-    def load_checkpoint(self, model):
-        model.load_state_dict(torch.load(self.path))
-        model.eval()
 
 
