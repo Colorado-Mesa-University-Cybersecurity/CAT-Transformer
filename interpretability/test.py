@@ -39,4 +39,4 @@ formatted_df = format_table_to_dataframe(entropy_table)
 # Print the DataFrame
 print(formatted_df)
 
-# formatted_df.to_csv('income_table.csv')
+formatted_df.to_csv('/home/wdwatson2/projects/CAT-Transformer/interpretability/results.csv')

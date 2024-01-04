@@ -3,10 +3,10 @@ from EvaluationLog import EvaluationLog, plot_train_losses, plot_train_accuracie
 import pickle
 
 # Load the object
-with open(r'C:\Users\smbm2\projects\CAT-Transformer\embed_experiments\evaluation_log.pkl', 'rb') as file:
+with open('/home/wdwatson2/projects/CAT-Transformer/embed_experiments/evaluation_log.pkl', 'rb') as file:
     evaluation_log = pickle.load(file)
 
-dataset = 'Aloi'
+dataset = 'Higgs'
 
 models = ["CAT", "FT"]
 embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]

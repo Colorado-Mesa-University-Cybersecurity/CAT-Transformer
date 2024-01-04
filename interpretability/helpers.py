@@ -124,8 +124,8 @@ def attn_entropy_get(log:EntropyLog, trained_model, model_name, num_layers, data
         # class_train_dataloader = DataLoader(class_train_dataset, batch_size=len(class_train_dataset))
         # class_test_dataloader = DataLoader(class_test_dataset, batch_size=len(class_test_dataset))
 
-        class_train_dataloader = DataLoader(class_train_dataset, batch_size=256)
-        class_test_dataloader = DataLoader(class_test_dataset, batch_size=256)
+        class_train_dataloader = DataLoader(class_train_dataset, batch_size=512)
+        class_test_dataloader = DataLoader(class_test_dataset, batch_size=512)
              
         train_acc, train_attn = evaluate(trained_model, class_train_dataloader, device_in_use)
         train_attn = train_attn.mean(0)
@@ -163,14 +163,19 @@ def format_table_to_dataframe(table):
     for class_name, class_data in table.items():
         for layers, layers_data in class_data['Income'].items():
             for split, split_data in layers_data.items():
-                row = {'Class': class_name, 'Layers': layers, 'Split': split}
                 for dataset, dataset_data in split_data.items():
                     for model, entropy in dataset_data.items():
-                        row[f"{dataset}_{model}"] = entropy
-                data.append(row)
+                        row = {
+                            'Class': class_name,
+                            'Layers': layers,
+                            'Split': split,
+                            'Dataset': dataset,
+                            'Model': model,
+                            'Entropy': entropy
+                        }
+                        data.append(row)
 
-    df = pd.DataFrame(data).set_index(['Class', 'Layers', 'Split'])
-    df.columns = pd.MultiIndex.from_tuples([(col.split('_')[0], col.split('_')[1]) for col in df.columns])
+    df = pd.DataFrame(data)
     return df
 
 def build_table(entropy_log):
