@@ -23,7 +23,7 @@ url: https://archive.ics.uci.edu/dataset/2/adult
 #num. 
 #cat. 
 metric 
-#classes
+#classes 2
 
 ## Higgs
 url: https://archive.ics.uci.edu/dataset/280/higgs  
