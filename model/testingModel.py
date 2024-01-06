@@ -405,8 +405,8 @@ class ClassificationHead(nn.Module):
         torch.nn.init.kaiming_normal_(self.lin1.weight, nonlinearity='relu')
         torch.nn.init.zeros_(self.lin1.bias)
 
-        # torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
-        # torch.nn.init.zeros_(self.lin3.bias)
+        torch.nn.init.kaiming_normal_(self.lin2.weight, nonlinearity='relu')
+        torch.nn.init.zeros_(self.lin2.bias)
 
     def forward(self, x):
 
@@ -453,8 +453,8 @@ class RegressionHead(nn.Module):
         torch.nn.init.kaiming_normal_(self.lin1.weight, nonlinearity='relu')
         torch.nn.init.zeros_(self.lin1.bias)
 
-        # torch.nn.init.kaiming_normal_(self.lin3.weight, nonlinearity='relu')
-        # torch.nn.init.zeros_(self.lin3.bias)
+        torch.nn.init.kaiming_normal_(self.lin2.weight, nonlinearity='relu')
+        torch.nn.init.zeros_(self.lin2.bias)
 
     def forward(self, x):
 
