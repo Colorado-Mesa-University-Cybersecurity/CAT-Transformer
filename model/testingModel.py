@@ -3,6 +3,7 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import f1_score
     
 #All layers of the model
 class MultiHeadAttention(nn.Module):
@@ -71,7 +72,7 @@ class TransformerBlock(nn.Module):
         self.norm2 = nn.LayerNorm(embed_size)
 
         self.feed_forward = nn.Sequential(nn.Linear(embed_size, forward_expansion*embed_size),
-                                          nn.ReLU(),
+                                          nn.GELU(),
                                           nn.Linear(forward_expansion*embed_size, embed_size)
                                           )
         self.dropout = nn.Dropout(dropout)
@@ -139,9 +140,15 @@ class Decoder(nn.Module):
             # context are the feature embeddings that will be used as key and value
             x, attention = layer(class_embed, context, context)
             attention_scores.append(attention)
+ 
+            class_embed = x #output of previous layer acts as input to next layer
             if self.FT_on:
-                x = x[:,0] #Extracting out the CLS token 
+                context = class_embed
         
+        #for the last output, only the contextualized CLS token is passed for FT
+        #with CAT, the contextualized CLS token is already the only output
+        if self.FT_on:
+            x = x[:,0] #Extracting out the CLS token 
         if self.get_attn:
             return x, torch.stack(attention_scores)
         return x
@@ -381,16 +388,16 @@ class ClassificationHead(nn.Module):
     def __init__(self, embed_size, dropout, mlp_scale_classification, num_target_classes):
         super(ClassificationHead, self).__init__()
         
-        #flattening the embeddings out so each sample in batch is represented with a 460 dimensional vector
+        #flattening the embeddings out
         self.input = embed_size
-        self.lin1 = nn.Linear(self.input, num_target_classes)
+        self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
         self.norm = nn.LayerNorm(self.input)
 
-        # self.drop = nn.Dropout(dropout)
-        # self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
+        self.drop = nn.Dropout(dropout)
+        self.lin2 = nn.Linear(mlp_scale_classification*self.input, num_target_classes)
         # self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
         # self.lin4 = nn.Linear(self.input, num_target_classes)
-        self.relu = nn.ReLU()
+        self.relu = nn.GELU()
 
         self.initialize_weights()
 
@@ -408,6 +415,9 @@ class ClassificationHead(nn.Module):
         x = self.norm(x)
         x = self.relu(x)
         x = self.lin1(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.lin2(x)
         # x = self.lin1(x)
         # x = self.relu(x)
         # x = self.drop(x)
@@ -427,14 +437,14 @@ class RegressionHead(nn.Module):
         
         #flattening the embeddings out so each sample in batch is represented with a 460 dimensional vector
         self.input = embed_size
-        self.lin1 = nn.Linear(self.input, 1)
+        self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
         self.norm = nn.LayerNorm(self.input)
-        # self.lin1 = nn.Linear(self.input, mlp_scale_classification*self.input)
-        # self.drop = nn.Dropout(dropout)
+        self.lin2 = nn.Linear(mlp_scale_classification*self.input, 1)
+        self.drop = nn.Dropout(dropout)
         # self.lin2 = nn.Linear(mlp_scale_classification*self.input, mlp_scale_classification*self.input)
-        # self.lin3 = nn.Linear(mlp_scale_classification*self.input, self.input)
+        # self.lin3 = nn.Linear(mlp_scale_classification*self.input, 1)
         # self.lin4 = nn.Linear(self.input, 1)
-        self.relu = nn.ReLU()
+        self.relu = nn.GELU()
 
 
         self.initialize_weights()
@@ -453,6 +463,9 @@ class RegressionHead(nn.Module):
         x = self.norm(x)
         x = self.relu(x)
         x = self.lin1(x)
+        x= self.relu(x)
+        x = self.drop(x)
+        x = self.lin2(x)
         # x = self.lin1(x)
         # x = self.relu(x)
         # x = self.drop(x)
@@ -469,16 +482,16 @@ class RegressionHead(nn.Module):
 class MyFTTransformer(nn.Module):
     def __init__(self, 
                  embedding = 'ConstantPL',
-                 alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
-                 embed_size=160,
+                 alpha=0.1, # Used to initialize the coefficients for the Exponential FF 
+                 embed_size=192,
                  n_cont = 0,
                  cat_feat:list = [], # ex: [10,4] - 10 categories in the first column, 4 categories in the second column
-                 num_layers=1, #Transformer layers
-                 heads=5, 
+                 num_layers=3, #Transformer layers
+                 heads=8, 
                  forward_expansion=8, # Determines how wide the Linear Layers are the encoder. Its a scaling factor. 
                  decoder_dropout=0.1,
                  classification_dropout = 0.1,
-                 pre_norm_on = False,
+                 pre_norm_on = True,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
                  targets_classes : list=  [3],
@@ -532,16 +545,16 @@ class MyFTTransformer(nn.Module):
 class CATTransformer(nn.Module):
     def __init__(self, 
                  embedding = 'ConstantPL',
-                 alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
-                 embed_size=160,
+                 alpha=0.1, # Used to initialize the coefficients for the Exponential FF 
+                 embed_size=200,
                  n_cont = 0,
                  cat_feat:list = [], # ex: [10,4] - 10 categories in the first column, 4 categories in the second column
                  num_layers=1, #Transformer layers
                  heads=5, 
-                 forward_expansion=8, # Determines how wide the Linear Layers are the encoder. Its a scaling factor. 
+                 forward_expansion=3, # Determines how wide the Linear Layers are the transformer. Its a scaling factor. 
                  decoder_dropout=0.1,
                  classification_dropout = 0.1,
-                 pre_norm_on = False,
+                 pre_norm_on = True,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
                  targets_classes : list=  [3],
@@ -715,11 +728,12 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
 
         avg_loss = total_loss/len(dataloader)
         accuracy = total_correct_1 / total_samples_1
+        f1 = f1_score(all_targets_1, all_predictions_1, average='weighted')
 
         if get_attn:
-            return avg_loss, accuracy, attention_ovr_batch
+            return avg_loss, accuracy, f1, attention_ovr_batch
         else:
-            return avg_loss, accuracy
+            return avg_loss, accuracy, f1
     
     else:
         for (cat_x, cont_x, labels) in dataloader:
@@ -747,9 +761,9 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
         avg_rmse = total_rmse/len(dataloader)
 
         if get_attn:
-            return avg_loss, accuracy, attention_ovr_batch
+            return avg_loss, avg_rmse, attention_ovr_batch
         else:
-            return avg_loss, accuracy
+            return avg_loss, avg_rmse
 
 def test(get_attn, regression_on, dataloader, model, loss_function, device_in_use):
     model.eval()
@@ -790,12 +804,13 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
 
             avg_loss = total_loss/len(dataloader)
             accuracy = total_correct_1 / total_samples_1
+            f1 = f1_score(all_targets_1, all_predictions_1, average='weighted')
 
             if get_attn:
-                return avg_loss, accuracy, attention_ovr_batch
+                return avg_loss, accuracy, f1, attention_ovr_batch
             else:
-                return avg_loss, accuracy
-    
+                return avg_loss, accuracy, f1
+
     else:
         with torch.no_grad():
             for (cat_x, cont_x, labels) in dataloader:
@@ -819,28 +834,35 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
             avg_rmse = total_rmse/len(dataloader)
 
             if get_attn:
-                return avg_loss, accuracy, attention_ovr_batch
+                return avg_loss, avg_rmse, attention_ovr_batch
             else:
-                return avg_loss, accuracy
+                return avg_loss, avg_rmse
         
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 #Made with GPT
 class EarlyStopping:
-    def __init__(self, patience=5, delta=0, verbose=False):
+    def __init__(self, patience=5, delta=0, verbose=False, mode='auto'):
         self.patience = patience  # Number of epochs to wait for improvement
         self.delta = delta  # Minimum change in monitored quantity to qualify as improvement
         self.verbose = verbose  # Whether to print information about the early stopping
+        self.mode = mode  # 'auto', 'min', or 'max'
 
         self.counter = 0  # Counter to keep track of epochs without improvement
         self.best_score = None  # Best validation score
         self.early_stop = False  # Flag to indicate if training should stop
 
+        if self.mode not in ['auto', 'min', 'max']:
+            raise ValueError("Mode must be one of 'auto', 'min', or 'max'.")
+
+        if self.mode == 'min':
+            self.delta *= -1  # For 'min' mode, reverse the delta direction
+
     def __call__(self, val_score):
         if self.best_score is None:
             self.best_score = val_score
-        elif val_score < self.best_score + self.delta:
+        elif ((val_score - self.best_score) < self.delta and self.mode != 'min') or ((val_score - self.best_score) > self.delta and self.mode == 'min'):
             self.counter += 1
             if self.verbose:
                 print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
