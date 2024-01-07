@@ -482,16 +482,16 @@ class RegressionHead(nn.Module):
 class MyFTTransformer(nn.Module):
     def __init__(self, 
                  embedding = 'ConstantPL',
-                 alpha=0.1, # Used to initialize the coefficients for the Exponential FF 
-                 embed_size=192,
+                 alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
+                 embed_size=200,
                  n_cont = 0,
                  cat_feat:list = [], # ex: [10,4] - 10 categories in the first column, 4 categories in the second column
-                 num_layers=3, #Transformer layers
-                 heads=8, 
+                 num_layers=1, #Transformer layers
+                 heads=10, 
                  forward_expansion=8, # Determines how wide the Linear Layers are the encoder. Its a scaling factor. 
                  decoder_dropout=0.1,
-                 classification_dropout = 0.1,
-                 pre_norm_on = True,
+                 classification_dropout = 0.2,
+                 pre_norm_on = False,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
                  targets_classes : list=  [3],
@@ -545,16 +545,16 @@ class MyFTTransformer(nn.Module):
 class CATTransformer(nn.Module):
     def __init__(self, 
                  embedding = 'ConstantPL',
-                 alpha=0.1, # Used to initialize the coefficients for the Exponential FF 
+                 alpha=0.5, # Used to initialize the coefficients for the Exponential FF 
                  embed_size=200,
                  n_cont = 0,
                  cat_feat:list = [], # ex: [10,4] - 10 categories in the first column, 4 categories in the second column
                  num_layers=1, #Transformer layers
-                 heads=5, 
-                 forward_expansion=3, # Determines how wide the Linear Layers are the transformer. Its a scaling factor. 
+                 heads=10, 
+                 forward_expansion=8, # Determines how wide the Linear Layers are the transformer. Its a scaling factor. 
                  decoder_dropout=0.1,
-                 classification_dropout = 0.1,
-                 pre_norm_on = True,
+                 classification_dropout = 0.2,
+                 pre_norm_on = False,
                  mlp_scale_classification = 8, #Scaling factor for linear layers in head
                  regression_on = False,
                  targets_classes : list=  [3],

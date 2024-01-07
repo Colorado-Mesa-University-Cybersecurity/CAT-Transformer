@@ -89,7 +89,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -140,7 +140,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -198,7 +198,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -249,7 +249,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -307,7 +307,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -358,7 +358,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -416,7 +416,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn= train(regression_on=False, 
@@ -467,7 +467,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 1
+epochs = 400
 
 for t in range(epochs):
     train_loss, train_acc, attn = train(regression_on=False, 
@@ -505,6 +505,877 @@ attn_entropy_get(entropylog, model_ft, "FT", 20, "Higgs",df_train, df_test, targ
 data = entropylog.get_data()
 print(data)
 
+######################################################################################################################################################
+
+#2 layer models
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=2).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=2).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 2, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 2, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+###########################################################################################################################################################################################
+
+# 4 layers
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=4).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=4).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 4, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 4, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+###########################################################################################################################################################################################
+
+# 6 layers
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=6).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=6).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 6, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 6, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+###########################################################################################################################################################################################
+
+# 7 layers
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=7).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=7).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 7, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 7, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+###########################################################################################################################################################################################
+
+# 8 layers
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=8).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=8).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 8, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 8, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+###########################################################################################################################################################################################
+
+# 9 layers
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=9).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=9).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 9, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 9, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+######################################################################################################################################################
+
+#1 layer models
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=1).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=1).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 1, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 1, "Higgs", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
+
+###########################################################################################################################################################################################
+
+# 3 layers
+
+model_cat = CATTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=3).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_cat.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn= train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_cat, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_cat,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
+#And a FT
+
+model_ft = MyFTTransformer(n_cont=len(cont_columns),
+                       cat_feat=cat_features,
+                       targets_classes=target_classes,
+                       get_attn=True,
+                       num_layers=3).to(device_in_use)
+
+loss_function = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0001)
+
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+test_losses = []
+test_accuracies_1 = [] 
+
+epochs = 400
+
+for t in range(epochs):
+    train_loss, train_acc, attn = train(regression_on=False, 
+                                  get_attn=True,
+                                   dataloader=train_dataloader, 
+                                   model=model_ft, 
+                                   loss_function=loss_function, 
+                                   optimizer=optimizer, 
+                                   device_in_use=device_in_use)
+    test_loss, test_acc, attn = test(regression_on=False,
+                               get_attn=True,
+                               dataloader=test_dataloader,
+                               model=model_ft,
+                               loss_function=loss_function,
+                               device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+attn_entropy_get(entropylog, model_cat, "CAT", 3, "Higgs",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 3, "Higgs",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+
+data = entropylog.get_data()
+print(data)
 
 
 
