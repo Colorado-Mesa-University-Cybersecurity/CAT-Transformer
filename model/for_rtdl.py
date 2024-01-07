@@ -3,6 +3,7 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import f1_score
 
 def rmse(y_true, y_pred):
     # Calculate the squared differences
@@ -34,7 +35,11 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-            predictions = model(cat_x, cont_x)
+            if cat_x.nelement() != 0:
+                predictions = model(cont_x,cat_x)
+
+            else:
+                predictions = model(cont_x, None)
 
             loss = loss_function(predictions, labels.long())
             total_loss+=loss.item()
@@ -56,20 +61,23 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
         avg_loss = total_loss/len(dataloader)
         accuracy = total_correct_1 / total_samples_1
 
+        f1 = f1_score(all_targets_1, all_predictions_1, average='weighted')
+
         if get_attn:
-            return avg_loss, accuracy, attention_ovr_batch
+            return avg_loss, accuracy, f1, attention_ovr_batch
         else:
-            return avg_loss, accuracy
+            return avg_loss, accuracy, f1
+
     
     else:
         for (cat_x, cont_x, labels) in dataloader:
             cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-            if get_attn:
-                predictions, attention = model(cat_x, cont_x)
-                attention_ovr_batch.append(attention.detach().cpu().numpy())
+            if cat_x.nelement() != 0:
+                predictions = model(cont_x,cat_x)
+
             else:
-                predictions = model(cat_x, cont_x)
+                predictions = model(cont_x, None)
 
             loss = loss_function(predictions, labels.unsqueeze(1))
             total_loss+=loss.item()
@@ -87,9 +95,9 @@ def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, 
         avg_rmse = total_rmse/len(dataloader)
 
         if get_attn:
-            return avg_loss, accuracy, attention_ovr_batch
+            return avg_loss, avg_rmse, attention_ovr_batch
         else:
-            return avg_loss, accuracy
+            return avg_loss, avg_rmse
 
 def test(get_attn, regression_on, dataloader, model, loss_function, device_in_use):
     model.eval()
@@ -109,11 +117,11 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
             for (cat_x, cont_x, labels) in dataloader:
                 cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-                if get_attn:
-                    predictions, attention = model(cat_x, cont_x)
-                    attention_ovr_batch.append(attention.detach().cpu().numpy())
+                if cat_x.nelement() != 0:
+                    predictions = model(cont_x,cat_x)
+
                 else:
-                    predictions = model(cat_x, cont_x)
+                    predictions = model(cont_x, None)
 
                 loss = loss_function(predictions, labels.long())
                 total_loss+=loss.item()
@@ -130,22 +138,23 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
 
             avg_loss = total_loss/len(dataloader)
             accuracy = total_correct_1 / total_samples_1
+            f1 = f1_score(all_targets_1, all_predictions_1, average='weighted')
 
             if get_attn:
-                return avg_loss, accuracy, attention_ovr_batch
+                return avg_loss, accuracy, f1, attention_ovr_batch
             else:
-                return avg_loss, accuracy
+                return avg_loss, accuracy, f1
     
     else:
         with torch.no_grad():
             for (cat_x, cont_x, labels) in dataloader:
                 cat_x,cont_x,labels=cat_x.to(device_in_use),cont_x.to(device_in_use),labels.to(device_in_use)
 
-                if get_attn:
-                    predictions, attention = model(cat_x, cont_x)
-                    attention_ovr_batch.append(attention.detach().cpu().numpy())
+                if cat_x.nelement() != 0:
+                    predictions = model(cont_x,cat_x)
+
                 else:
-                    predictions = model(cat_x, cont_x)
+                    predictions = model(cont_x, None)
 
                 loss = loss_function(predictions, labels.unsqueeze(1))
                 total_loss+=loss.item()
@@ -159,7 +168,7 @@ def test(get_attn, regression_on, dataloader, model, loss_function, device_in_us
             avg_rmse = total_rmse/len(dataloader)
 
             if get_attn:
-                return avg_loss, accuracy, attention_ovr_batch
+                return avg_loss, avg_rmse, attention_ovr_batch
             else:
-                return avg_loss, accuracy
+                return avg_loss, avg_rmse
        
