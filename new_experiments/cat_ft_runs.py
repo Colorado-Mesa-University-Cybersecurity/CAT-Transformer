@@ -90,7 +90,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= train(regression_on=False, 
@@ -149,7 +149,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
@@ -261,7 +261,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= train(regression_on=False, 
@@ -320,7 +320,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
@@ -441,7 +441,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= train(regression_on=False, 
@@ -500,7 +500,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
@@ -621,7 +621,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= train(regression_on=False, 
@@ -680,7 +680,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
@@ -805,7 +805,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= train(regression_on=False, 
@@ -864,7 +864,7 @@ test_losses = []
 test_accuracies_1 = [] 
 test_f1s = []
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
@@ -977,7 +977,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_rmse = train(regression_on=True, 
@@ -1031,7 +1031,7 @@ train_rmse_1 = []
 test_losses = []
 test_rmse_1 = [] 
 
-epochs = 600
+epochs = 800
 
 for t in range(epochs):
     train_loss, train_rmse = for_rtdl.train(regression_on=True, 
