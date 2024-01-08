@@ -5,7 +5,8 @@ import numpy as np
 import torch 
 from torch.utils.data import DataLoader
 import sys
-sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
+# sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
+sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
 from testingModel import Combined_Dataset
 
 class TrainingAttnScoresLog:

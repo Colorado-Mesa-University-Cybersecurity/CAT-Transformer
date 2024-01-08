@@ -9,7 +9,8 @@ import pickle
 import matplotlib.pyplot as plt
 
 import sys
-sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
+# sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
+sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
 from testingModel import CATTransformer, MyFTTransformer, Combined_Dataset, train, test, EarlyStopping
 
 device_in_use = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -17,14 +18,21 @@ print(device_in_use)
 
 # Load log
 
-with open('/home/wdwatson2/projects/CAT-Transformer/interpretability/entropylog.pkl', 'rb') as file:
+# with open('/home/wdwatson2/projects/CAT-Transformer/interpretability/entropylog.pkl', 'rb') as file:
+#     entropylog = pickle.load(file)
+
+with open(r'C:\Users\smbm2\projects\CAT-Transformer\interpretability\entropylog.pkl', 'rb') as file:
     entropylog = pickle.load(file)
 
 # Higgs
 
-df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/train.csv')
-df_test = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/test.csv')
-df_val = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/validation.csv') 
+# df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/train.csv')
+# df_test = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/test.csv')
+# df_val = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/validation.csv') 
+    
+df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\higgs\train.csv')
+df_test = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\higgs\test.csv')
+df_val = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\higgs\validation.csv')
 
 cont_columns = ['lepton_pT', 'lepton_eta', 'lepton_phi',
        'missing_energy_magnitude', 'missing_energy_phi', 'jet1pt', 'jet1eta',
@@ -92,14 +100,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -143,14 +151,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -201,14 +209,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -252,14 +260,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -310,14 +318,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -361,14 +369,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -419,14 +427,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -470,14 +478,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -528,14 +536,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -579,14 +587,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -637,14 +645,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -688,14 +696,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -746,14 +754,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -797,14 +805,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -855,14 +863,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -906,14 +914,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -964,14 +972,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -1015,14 +1023,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -1073,14 +1081,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -1124,14 +1132,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -1182,14 +1190,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -1233,14 +1241,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -1291,14 +1299,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn= train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn= train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_cat, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_cat,
@@ -1342,14 +1350,14 @@ test_accuracies_1 = []
 epochs = 400
 
 for t in range(epochs):
-    train_loss, train_acc, attn = train(regression_on=False, 
+    train_loss, train_acc, train_ft, attn = train(regression_on=False, 
                                   get_attn=True,
                                    dataloader=train_dataloader, 
                                    model=model_ft, 
                                    loss_function=loss_function, 
                                    optimizer=optimizer, 
                                    device_in_use=device_in_use)
-    test_loss, test_acc, attn = test(regression_on=False,
+    test_loss, test_acc, test_ft, attn = test(regression_on=False,
                                get_attn=True,
                                dataloader=test_dataloader,
                                model=model_ft,
@@ -1381,3 +1389,7 @@ print(data)
 
 # with open('/home/wdwatson2/projects/CAT-Transformer/interpretability/entropylog.pkl', 'wb') as file:
 #     pickle.dump(entropylog, file)
+
+with open(r'C:\Users\smbm2\projects\CAT-Transformer\interpretability\entropylog.pkl', 'wb') as file:
+    pickle.dump(entropylog, file)
+
