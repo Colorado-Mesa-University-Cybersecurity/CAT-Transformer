@@ -3,7 +3,10 @@ import pickle
 import numpy as np
 
 # Assuming you've already loaded your data into performance_log
-with open('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_log.pkl', 'rb') as file:
+# with open('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_log.pkl', 'rb') as file:
+#     performance_log = pickle.load(file)
+
+with open(r'C:\Users\smbm2\projects\CAT-Transformer\new_experiments\performance_log.pkl', 'rb') as file:
     performance_log = pickle.load(file)
 
 # Initialize lists to store metrics
@@ -52,4 +55,7 @@ for model_name in performance_log.log:
 df = pd.DataFrame(results)
 
 # Saving the DataFrame to a CSV file
-df.to_csv('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_metrics.csv', index=False)
+# df.to_csv('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_metrics.csv', index=False)
+
+df.to_csv(r'C:\Users\smbm2\projects\CAT-Transformer\new_experiments\performance_metrics.csv', index=False)
+
