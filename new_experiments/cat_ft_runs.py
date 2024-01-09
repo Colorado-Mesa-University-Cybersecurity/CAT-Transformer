@@ -71,123 +71,126 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 
-#CAT
-cat_model = CATTransformer(n_cont=len(cont_columns),
-                       cat_feat=cat_features,
-                       targets_classes=target_classes,
-                       get_attn=False,
-                       ).to(device_in_use)
+for trial_num in range(3):
+    #CAT
+    cat_model = CATTransformer(n_cont=len(cont_columns),
+                        cat_feat=cat_features,
+                        targets_classes=target_classes,
+                        get_attn=False,
+                        ).to(device_in_use)
 
-optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0001)
-loss_function = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    loss_function = nn.CrossEntropyLoss()
 
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=cat_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=cat_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
     
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+    print(trial_num)
 
-performance_log.add_metric('CAT', 'Income', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('CAT', 'Income', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('CAT', 'Income', 'Test F1', test_f1s)
-performance_log.add_metric('CAT', 'Income', 'Train Loss', train_losses)
-performance_log.add_metric('CAT', 'Income', 'Test Loss', test_losses)
+    performance_log.add_metric('CAT', 'Income', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Income', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Income', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('CAT', 'Income', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('CAT', 'Income', 'Test Loss', test_losses, trial=trial_num)
 
 
-#FT
-ft_model = FTTransformer(
-    n_cont_features=len(cont_columns),
-    cat_cardinalities=cat_features,
-    d_out=target_classes[0],
-    **FTTransformer.get_default_kwargs(),
-).to(device_in_use)
-optimizer = ft_model.make_default_optimizer()
-loss_function = nn.CrossEntropyLoss()
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    #FT
+    ft_model = FTTransformer(
+        n_cont_features=len(cont_columns),
+        cat_cardinalities=cat_features,
+        d_out=target_classes[0],
+        **FTTransformer.get_default_kwargs(),
+    ).to(device_in_use)
+    optimizer = ft_model.make_default_optimizer()
+    loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=ft_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=ft_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('FT', 'Income', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('FT', 'Income', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('FT', 'Income', 'Test F1', test_f1s)
-performance_log.add_metric('FT', 'Income', 'Train Loss', train_losses)
-performance_log.add_metric('FT', 'Income', 'Test Loss', test_losses)
+    performance_log.add_metric('FT', 'Income', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Income', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Income', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('FT', 'Income', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('FT', 'Income', 'Test Loss', test_losses, trial=trial_num)
 
 ###############################################################################################################################################################################################
 performance_log.add_new_dataset('Higgs')
@@ -242,123 +245,124 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 
-#CAT
-cat_model = CATTransformer(n_cont=len(cont_columns),
-                       cat_feat=cat_features,
-                       targets_classes=target_classes,
-                       get_attn=False,
-                       ).to(device_in_use)
+for trial_num in range(3):
+    #CAT
+    cat_model = CATTransformer(n_cont=len(cont_columns),
+                        cat_feat=cat_features,
+                        targets_classes=target_classes,
+                        get_attn=False,
+                        ).to(device_in_use)
 
-optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0001)
-loss_function = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    loss_function = nn.CrossEntropyLoss()
 
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=cat_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=cat_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('CAT', 'Higgs', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('CAT', 'Higgs', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('CAT', 'Higgs', 'Test F1', test_f1s)
-performance_log.add_metric('CAT', 'Higgs', 'Train Loss', train_losses)
-performance_log.add_metric('CAT', 'Higgs', 'Test Loss', test_losses)
+    performance_log.add_metric('CAT', 'Higgs', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Higgs', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Higgs', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('CAT', 'Higgs', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('CAT', 'Higgs', 'Test Loss', test_losses, trial=trial_num)
 
 
-#FT
-ft_model = FTTransformer(
-    n_cont_features=len(cont_columns),
-    cat_cardinalities=cat_features,
-    d_out=target_classes[0],
-    **FTTransformer.get_default_kwargs(),
-).to(device_in_use)
-optimizer = ft_model.make_default_optimizer()
-loss_function = nn.CrossEntropyLoss()
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    #FT
+    ft_model = FTTransformer(
+        n_cont_features=len(cont_columns),
+        cat_cardinalities=cat_features,
+        d_out=target_classes[0],
+        **FTTransformer.get_default_kwargs(),
+    ).to(device_in_use)
+    optimizer = ft_model.make_default_optimizer()
+    loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=ft_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=ft_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('FT', 'Higgs', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('FT', 'Higgs', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('FT', 'Higgs', 'Test F1', test_f1s)
-performance_log.add_metric('FT', 'Higgs', 'Train Loss', train_losses)
-performance_log.add_metric('FT', 'Higgs', 'Test Loss', test_losses)
+    performance_log.add_metric('FT', 'Higgs', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Higgs', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Higgs', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('FT', 'Higgs', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('FT', 'Higgs', 'Test Loss', test_losses, trial=trial_num)
 
 
 ##################################################################################################################################################################################################
@@ -421,124 +425,124 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 
+for trial_num in range(3):
+    #CAT
+    cat_model = CATTransformer(n_cont=len(cont_columns),
+                        cat_feat=cat_features,
+                        targets_classes=target_classes,
+                        get_attn=False,
+                        ).to(device_in_use)
 
-#CAT
-cat_model = CATTransformer(n_cont=len(cont_columns),
-                       cat_feat=cat_features,
-                       targets_classes=target_classes,
-                       get_attn=False,
-                       ).to(device_in_use)
+    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    loss_function = nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0001)
-loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    epochs = 800 
 
-epochs = 800
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=cat_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=cat_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
-
-performance_log.add_metric('CAT', 'Helena', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('CAT', 'Helena', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('CAT', 'Helena', 'Test F1', test_f1s)
-performance_log.add_metric('CAT', 'Helena', 'Train Loss', train_losses)
-performance_log.add_metric('CAT', 'Helena', 'Test Loss', test_losses)
+    performance_log.add_metric('CAT', 'Helena', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Helena', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Helena', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('CAT', 'Helena', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('CAT', 'Helena', 'Test Loss', test_losses, trial=trial_num)
 
 
-#FT
-ft_model = FTTransformer(
-    n_cont_features=len(cont_columns),
-    cat_cardinalities=cat_features,
-    d_out=target_classes[0],
-    **FTTransformer.get_default_kwargs(),
-).to(device_in_use)
-optimizer = ft_model.make_default_optimizer()
-loss_function = nn.CrossEntropyLoss()
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    #FT
+    ft_model = FTTransformer(
+        n_cont_features=len(cont_columns),
+        cat_cardinalities=cat_features,
+        d_out=target_classes[0],
+        **FTTransformer.get_default_kwargs(),
+    ).to(device_in_use)
+    optimizer = ft_model.make_default_optimizer()
+    loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=ft_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=ft_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('FT', 'Helena', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('FT', 'Helena', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('FT', 'Helena', 'Test F1', test_f1s)
-performance_log.add_metric('FT', 'Helena', 'Train Loss', train_losses)
-performance_log.add_metric('FT', 'Helena', 'Test Loss', test_losses)
+    performance_log.add_metric('FT', 'Helena', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Helena', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Helena', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('FT', 'Helena', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('FT', 'Helena', 'Test Loss', test_losses, trial=trial_num)
 
 ##############################################################################################################################################################################################
 
@@ -601,124 +605,124 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 
+for trial_num in range(3):
+    #CAT
+    cat_model = CATTransformer(n_cont=len(cont_columns),
+                        cat_feat=cat_features,
+                        targets_classes=target_classes,
+                        get_attn=False,
+                        ).to(device_in_use)
 
-#CAT
-cat_model = CATTransformer(n_cont=len(cont_columns),
-                       cat_feat=cat_features,
-                       targets_classes=target_classes,
-                       get_attn=False,
-                       ).to(device_in_use)
+    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    loss_function = nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0001)
-loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    epochs = 800 
 
-epochs = 800
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=cat_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=cat_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
-
-performance_log.add_metric('CAT', 'Covertype', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('CAT', 'Covertype', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('CAT', 'Covertype', 'Test F1', test_f1s)
-performance_log.add_metric('CAT', 'Covertype', 'Train Loss', train_losses)
-performance_log.add_metric('CAT', 'Covertype', 'Test Loss', test_losses)
+    performance_log.add_metric('CAT', 'Covertype', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Covertype', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Covertype', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('CAT', 'Covertype', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('CAT', 'Covertype', 'Test Loss', test_losses, trial=trial_num)
 
 
-#FT
-ft_model = FTTransformer(
-    n_cont_features=len(cont_columns),
-    cat_cardinalities=cat_features,
-    d_out=target_classes[0],
-    **FTTransformer.get_default_kwargs(),
-).to(device_in_use)
-optimizer = ft_model.make_default_optimizer()
-loss_function = nn.CrossEntropyLoss()
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    #FT
+    ft_model = FTTransformer(
+        n_cont_features=len(cont_columns),
+        cat_cardinalities=cat_features,
+        d_out=target_classes[0],
+        **FTTransformer.get_default_kwargs(),
+    ).to(device_in_use)
+    optimizer = ft_model.make_default_optimizer()
+    loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=ft_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=ft_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('FT', 'Covertype', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('FT', 'Covertype', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('FT', 'Covertype', 'Test F1', test_f1s)
-performance_log.add_metric('FT', 'Covertype', 'Train Loss', train_losses)
-performance_log.add_metric('FT', 'Covertype', 'Test Loss', test_losses)
+    performance_log.add_metric('FT', 'Covertype', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Covertype', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Covertype', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('FT', 'Covertype', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('FT', 'Covertype', 'Test Loss', test_losses, trial=trial_num)
 
 
 #############################################################################################################################################################################
@@ -785,124 +789,124 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 
+for trial_num in range(3):
+    #CAT
+    cat_model = CATTransformer(n_cont=len(cont_columns),
+                        cat_feat=cat_features,
+                        targets_classes=target_classes,
+                        get_attn=False,
+                        ).to(device_in_use)
 
-#CAT
-cat_model = CATTransformer(n_cont=len(cont_columns),
-                       cat_feat=cat_features,
-                       targets_classes=target_classes,
-                       get_attn=False,
-                       ).to(device_in_use)
+    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    loss_function = nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0001)
-loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    epochs = 800 
 
-epochs = 800
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=cat_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=cat_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
-
-performance_log.add_metric('CAT', 'Aloi', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('CAT', 'Aloi', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('CAT', 'Aloi', 'Test F1', test_f1s)
-performance_log.add_metric('CAT', 'Aloi', 'Train Loss', train_losses)
-performance_log.add_metric('CAT', 'Aloi', 'Test Loss', test_losses)
+    performance_log.add_metric('CAT', 'Aloi', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Aloi', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'Aloi', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('CAT', 'Aloi', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('CAT', 'Aloi', 'Test Loss', test_losses, trial=trial_num)
 
 
-#FT
-ft_model = FTTransformer(
-    n_cont_features=len(cont_columns),
-    cat_cardinalities=cat_features,
-    d_out=target_classes[0],
-    **FTTransformer.get_default_kwargs(),
-).to(device_in_use)
-optimizer = ft_model.make_default_optimizer()
-loss_function = nn.CrossEntropyLoss()
-early_stopping = EarlyStopping(patience=10, verbose=True)
+    #FT
+    ft_model = FTTransformer(
+        n_cont_features=len(cont_columns),
+        cat_cardinalities=cat_features,
+        d_out=target_classes[0],
+        **FTTransformer.get_default_kwargs(),
+    ).to(device_in_use)
+    optimizer = ft_model.make_default_optimizer()
+    loss_function = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=10, verbose=True)
 
-train_losses = []
-train_accuracies_1 = [] 
-train_f1s = []
-test_losses = []
-test_accuracies_1 = [] 
-test_f1s = []
+    train_losses = []
+    train_accuracies_1 = [] 
+    train_f1s = []
+    test_losses = []
+    test_accuracies_1 = [] 
+    test_f1s = []
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                               get_attn=False,
-                               dataloader=test_dataloader,
-                               model=ft_model,
-                               loss_function=loss_function,
-                               device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_accuracies_1.append(train_acc)
-    train_f1s.append(train_f1)
-    test_losses.append(test_loss)
-    test_accuracies_1.append(test_acc)
-    test_f1s.append(test_f1)
+    for t in range(epochs):
+        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                                get_attn=False,
+                                dataloader=test_dataloader,
+                                model=ft_model,
+                                loss_function=loss_function,
+                                device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_accuracies_1.append(train_acc)
+        train_f1s.append(train_f1)
+        test_losses.append(test_loss)
+        test_accuracies_1.append(test_acc)
+        test_f1s.append(test_f1)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
+        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_acc)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_acc)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('FT', 'Aloi', 'Test Accuracy', test_accuracies_1)
-performance_log.add_metric('FT', 'Aloi', 'Train Accuracy', train_accuracies_1)
-performance_log.add_metric('FT', 'Aloi', 'Test F1', test_f1s)
-performance_log.add_metric('FT', 'Aloi', 'Train Loss', train_losses)
-performance_log.add_metric('FT', 'Aloi', 'Test Loss', test_losses)
+    performance_log.add_metric('FT', 'Aloi', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Aloi', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('FT', 'Aloi', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('FT', 'Aloi', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('FT', 'Aloi', 'Test Loss', test_losses, trial=trial_num)
 
 ##################################################################################################################################################################################
 
@@ -959,114 +963,115 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 
-#CAT
-cat_model = CATTransformer(n_cont=len(cont_columns),
-                       cat_feat=cat_features,
-                       targets_classes=target_classes,
-                       get_attn=False,
 
-                       regression_on=True).to(device_in_use)
+for trial_num in range(3):
+    #CAT
+    cat_model = CATTransformer(n_cont=len(cont_columns),
+                        cat_feat=cat_features,
+                        targets_classes=target_classes,
+                        get_attn=False,
+                        regression_on=True).to(device_in_use)
 
-optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0001)
-loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    loss_function = nn.MSELoss()
 
-early_stopping = EarlyStopping(patience=16, verbose=True, mode='min') #for regression
+    early_stopping = EarlyStopping(patience=16, verbose=True, mode='min') #for regression
 
-train_losses = []
-train_rmse_1 = [] 
-test_losses = []
-test_rmse_1 = [] 
+    train_losses = []
+    train_rmse_1 = [] 
+    test_losses = []
+    test_rmse_1 = [] 
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_rmse = train(regression_on=True, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_rmse = test(regression_on=True, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=cat_model, 
-                                   loss_function=loss_function, 
-                                   device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_rmse_1.append(train_rmse)
-    test_losses.append(test_loss)
-    test_rmse_1.append(test_rmse)
+    for t in range(epochs):
+        train_loss, train_rmse = train(regression_on=True, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_rmse = test(regression_on=True, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=cat_model, 
+                                    loss_function=loss_function, 
+                                    device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_rmse_1.append(train_rmse)
+        test_losses.append(test_loss)
+        test_rmse_1.append(test_rmse)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, RMSE {(train_rmse)}"
-    test_metrics = f"Test: Loss {(test_loss)}, RMSE {(test_rmse)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, RMSE {(train_rmse)}"
+        test_metrics = f"Test: Loss {(test_loss)}, RMSE {(test_rmse)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_rmse)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_rmse)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('CAT', 'California', 'Test RMSE', test_rmse_1)
-performance_log.add_metric('CAT', 'California', 'Train RMSE', train_rmse_1)
-performance_log.add_metric('CAT', 'California', 'Train Loss', train_losses)
-performance_log.add_metric('CAT', 'California', 'Test Loss', test_losses)
+    performance_log.add_metric('CAT', 'California', 'Test RMSE', test_rmse_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'California', 'Train RMSE', train_rmse_1, trial=trial_num)
+    performance_log.add_metric('CAT', 'California', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('CAT', 'California', 'Test Loss', test_losses, trial=trial_num)
 
 
-#FT
-ft_model = FTTransformer(
-    n_cont_features=len(cont_columns),
-    cat_cardinalities=cat_features,
-    d_out=1,
-    **FTTransformer.get_default_kwargs(),
-).to(device_in_use)
-optimizer = ft_model.make_default_optimizer()
-loss_function = nn.MSELoss()
-early_stopping = EarlyStopping(patience=16, verbose=True, mode='min') #for regression
+    #FT
+    ft_model = FTTransformer(
+        n_cont_features=len(cont_columns),
+        cat_cardinalities=cat_features,
+        d_out=1,
+        **FTTransformer.get_default_kwargs(),
+    ).to(device_in_use)
+    optimizer = ft_model.make_default_optimizer()
+    loss_function = nn.MSELoss()
+    early_stopping = EarlyStopping(patience=16, verbose=True, mode='min') #for regression
 
-train_losses = []
-train_rmse_1 = [] 
-test_losses = []
-test_rmse_1 = [] 
+    train_losses = []
+    train_rmse_1 = [] 
+    test_losses = []
+    test_rmse_1 = [] 
 
-epochs = 800
+    epochs = 800 
 
-for t in range(epochs):
-    train_loss, train_rmse = for_rtdl.train(regression_on=True, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   optimizer=optimizer, 
-                                   device_in_use=device_in_use)
-    test_loss, test_rmse = for_rtdl.test(regression_on=True, 
-                                  get_attn=False,
-                                   dataloader=train_dataloader, 
-                                   model=ft_model, 
-                                   loss_function=loss_function, 
-                                   device_in_use=device_in_use)
-    train_losses.append(train_loss)
-    train_rmse_1.append(train_rmse)
-    test_losses.append(test_loss)
-    test_rmse_1.append(test_rmse)
+    for t in range(epochs):
+        train_loss, train_rmse = for_rtdl.train(regression_on=True, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    optimizer=optimizer, 
+                                    device_in_use=device_in_use)
+        test_loss, test_rmse = for_rtdl.test(regression_on=True, 
+                                    get_attn=False,
+                                    dataloader=train_dataloader, 
+                                    model=ft_model, 
+                                    loss_function=loss_function, 
+                                    device_in_use=device_in_use)
+        train_losses.append(train_loss)
+        train_rmse_1.append(train_rmse)
+        test_losses.append(test_loss)
+        test_rmse_1.append(test_rmse)
 
-    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-    train_metrics = f"Train: Loss {(train_loss)}, RMSE {(train_rmse)}"
-    test_metrics = f"Test: Loss {(test_loss)}, RMSE {(test_rmse)}"
-    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+        train_metrics = f"Train: Loss {(train_loss)}, RMSE {(train_rmse)}"
+        test_metrics = f"Test: Loss {(test_loss)}, RMSE {(test_rmse)}"
+        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
 
-    early_stopping(test_rmse)
-    
-    if early_stopping.early_stop:
-        print("Early stopping")
-        break
+        early_stopping(test_rmse)
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
 
-performance_log.add_metric('FT', 'California', 'Test RMSE', test_rmse_1)
-performance_log.add_metric('FT', 'California', 'Train RMSE', train_rmse_1)
-performance_log.add_metric('FT', 'California', 'Train Loss', train_losses)
-performance_log.add_metric('FT', 'California', 'Test Loss', test_losses)
+    performance_log.add_metric('FT', 'California', 'Test RMSE', test_rmse_1, trial=trial_num)
+    performance_log.add_metric('FT', 'California', 'Train RMSE', train_rmse_1, trial=trial_num)
+    performance_log.add_metric('FT', 'California', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('FT', 'California', 'Test Loss', test_losses, trial=trial_num)
 
 
 with open('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_log.pkl', 'wb') as file:
