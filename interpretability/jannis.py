@@ -20,29 +20,20 @@ print(device_in_use)
 with open('/home/wdwatson2/projects/CAT-Transformer/interpretability/entropylog.pkl', 'rb') as file:
     entropylog = pickle.load(file)
 
-# Covertype
+# Jannis
 
-df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/covertype/train.csv')
-df_test = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/covertype/test.csv')
-df_val = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/covertype/validation.csv') 
+df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/jannis/train.csv')
+df_test = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/jannis/test.csv')
+df_val = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/jannis/validation.csv') 
 
-cont_columns = ['Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology',
-       'Vertical_Distance_To_Hydrology', 'Horizontal_Distance_To_Roadways',
-       'Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
-       'Horizontal_Distance_To_Fire_Points', 'Wilderness_Area1',
-       'Wilderness_Area2', 'Wilderness_Area3', 'Wilderness_Area4',
-       'Soil_Type1', 'Soil_Type2', 'Soil_Type3', 'Soil_Type4', 'Soil_Type5',
-       'Soil_Type6', 'Soil_Type7', 'Soil_Type8', 'Soil_Type9', 'Soil_Type10',
-       'Soil_Type11', 'Soil_Type12', 'Soil_Type13', 'Soil_Type14',
-       'Soil_Type15', 'Soil_Type16', 'Soil_Type17', 'Soil_Type18',
-       'Soil_Type19', 'Soil_Type20', 'Soil_Type21', 'Soil_Type22',
-       'Soil_Type23', 'Soil_Type24', 'Soil_Type25', 'Soil_Type26',
-       'Soil_Type27', 'Soil_Type28', 'Soil_Type29', 'Soil_Type30',
-       'Soil_Type31', 'Soil_Type32', 'Soil_Type33', 'Soil_Type34',
-       'Soil_Type35', 'Soil_Type36', 'Soil_Type37', 'Soil_Type38',
-       'Soil_Type39', 'Soil_Type40']
+cont_columns = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10',
+       'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20',
+       'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'V29', 'V30',
+       'V31', 'V32', 'V33', 'V34', 'V35', 'V36', 'V37', 'V38', 'V39', 'V40',
+       'V41', 'V42', 'V43', 'V44', 'V45', 'V46', 'V47', 'V48', 'V49', 'V50',
+       'V51', 'V52', 'V53', 'V54']
 cat_columns = []
-target = ['Cover_Type']
+target = ['class']
 
 #CHECKING TO MAKE SURE YOUR LIST IS CORRECT (NO NEED TO TOUCH)
 yourlist = cont_columns + cat_columns+target
@@ -180,8 +171,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 10, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 10, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 10, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 10, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -289,8 +280,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 5, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 5, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 5, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 5, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -398,8 +389,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 15, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 15, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 15, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 15, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -507,8 +498,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 20, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 20, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 20, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 20, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -617,8 +608,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 2, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 2, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 2, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 2, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -726,8 +717,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 4, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 4, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 4, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 4, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -835,8 +826,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 6, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 6, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 6, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 6, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -944,8 +935,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 7, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 7, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 7, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 7, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -1053,8 +1044,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 8, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 8, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 8, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 8, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -1162,16 +1153,16 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 9, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 9, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 9, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 9, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
 
 
-######################################################################################################################################################
+#####################################################################################################################################################
 
-#1 layer models
+# 1 layer models
 
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -1272,8 +1263,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 1, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 1, "Covertype", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 1, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 1, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)
@@ -1381,8 +1372,8 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 3, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 3, "Covertype",df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_cat, "CAT", 3, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+attn_entropy_get(entropylog, model_ft, "FT", 3, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
 data = entropylog.get_data()
 print(data)

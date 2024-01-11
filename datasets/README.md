@@ -58,7 +58,7 @@ url: https://www.kaggle.com/datasets/camnugent/california-housing-prices
 #num. : 9
 #cat. : 1
 metric : MSE
-#classes : 10
+#classes : 
 
 ## Covertype
 Big classification dataset made up of purely numerical features
