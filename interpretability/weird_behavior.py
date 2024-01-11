@@ -7,18 +7,17 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import pickle
 import matplotlib.pyplot as plt
+from rtdl_revisiting_models import FTTransformer
+
 
 import sys
 sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
 from testingModel import CATTransformer, MyFTTransformer, Combined_Dataset, train, test, EarlyStopping
+import for_rtdl
 
 device_in_use = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device_in_use)
 
-# Load log
-
-with open('/home/wdwatson2/projects/CAT-Transformer/interpretability/entropylog.pkl', 'rb') as file:
-    entropylog = pickle.load(file)
 
 # Jannis
 
@@ -72,6 +71,8 @@ test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 #10 layer models
 
+print("CAT - 10 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -88,7 +89,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -122,6 +123,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 10 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -139,7 +142,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -171,16 +174,75 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 10, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 10, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+# RTDL FT
+    
+print("RTDL FT - 10 layers")
 
-data = entropylog.get_data()
-print(data)
+ft_model = FTTransformer(
+    n_cont_features=len(cont_columns),
+    cat_cardinalities=cat_features,
+    d_out=target_classes[0],
+    n_blocks=10,
+    d_block=200,
+    attention_n_heads=10,
+    attention_dropout=0.1,
+    ffn_d_hidden=None,
+    ffn_d_hidden_multiplier=4 / 3,
+    ffn_dropout=0.1,
+    residual_dropout=0.0,
+    ).to(device_in_use)
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0005)
+loss_function = nn.CrossEntropyLoss()
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+train_f1s = []
+test_losses = []
+test_accuracies_1 = [] 
+test_f1s = []
+
+epochs = 800 
+
+for t in range(epochs):
+    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                get_attn=False,
+                                dataloader=train_dataloader, 
+                                model=ft_model, 
+                                loss_function=loss_function, 
+                                optimizer=optimizer, 
+                                device_in_use=device_in_use)
+    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                            get_attn=False,
+                            dataloader=test_dataloader,
+                            model=ft_model,
+                            loss_function=loss_function,
+                            device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    train_f1s.append(train_f1)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+    test_f1s.append(test_f1)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
 
 ###########################################################################################################################################################################################
 
 # 5 layers
 
+print("CAT - 5 layers")
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -197,7 +259,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -232,6 +294,7 @@ for t in range(epochs):
 
 #And a FT
 
+print("MYFT - 5 layers")
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -248,7 +311,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -280,16 +343,12 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 5, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 5, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-
-data = entropylog.get_data()
-print(data)
 
 ###############################################################################################################################################################################
 
 # 15 layers
 
+print("CAT - 15 layers")
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -306,7 +365,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -340,6 +399,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 15 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -357,7 +418,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -389,16 +450,76 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 15, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 15, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+# RTDL FT
+    
+print("RTDL FT - 15 layers")
 
-data = entropylog.get_data()
-print(data)
+ft_model = FTTransformer(
+    n_cont_features=len(cont_columns),
+    cat_cardinalities=cat_features,
+    d_out=target_classes[0],
+    n_blocks=15,
+    d_block=200,
+    attention_n_heads=10,
+    attention_dropout=0.1,
+    ffn_d_hidden=None,
+    ffn_d_hidden_multiplier=4 / 3,
+    ffn_dropout=0.1,
+    residual_dropout=0.0,
+    ).to(device_in_use)
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0005)
+loss_function = nn.CrossEntropyLoss()
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+train_f1s = []
+test_losses = []
+test_accuracies_1 = [] 
+test_f1s = []
+
+epochs = 800 
+
+for t in range(epochs):
+    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                get_attn=False,
+                                dataloader=train_dataloader, 
+                                model=ft_model, 
+                                loss_function=loss_function, 
+                                optimizer=optimizer, 
+                                device_in_use=device_in_use)
+    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                            get_attn=False,
+                            dataloader=test_dataloader,
+                            model=ft_model,
+                            loss_function=loss_function,
+                            device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    train_f1s.append(train_f1)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+    test_f1s.append(test_f1)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
+
+
 
 #####################################################################################################################################################################################
 
 #20 layers
 
+print("CAT - 20 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -415,7 +536,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -449,6 +570,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 20 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -466,7 +589,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -498,17 +621,75 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 20, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 20, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+# RTDL FT
+    
+print("RTDL FT - 20 layers")
 
-data = entropylog.get_data()
-print(data)
+ft_model = FTTransformer(
+    n_cont_features=len(cont_columns),
+    cat_cardinalities=cat_features,
+    d_out=target_classes[0],
+    n_blocks=20,
+    d_block=200,
+    attention_n_heads=10,
+    attention_dropout=0.1,
+    ffn_d_hidden=None,
+    ffn_d_hidden_multiplier=4 / 3,
+    ffn_dropout=0.1,
+    residual_dropout=0.0,
+    ).to(device_in_use)
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0005)
+loss_function = nn.CrossEntropyLoss()
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+train_f1s = []
+test_losses = []
+test_accuracies_1 = [] 
+test_f1s = []
+
+epochs = 800 
+
+for t in range(epochs):
+    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                get_attn=False,
+                                dataloader=train_dataloader, 
+                                model=ft_model, 
+                                loss_function=loss_function, 
+                                optimizer=optimizer, 
+                                device_in_use=device_in_use)
+    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                            get_attn=False,
+                            dataloader=test_dataloader,
+                            model=ft_model,
+                            loss_function=loss_function,
+                            device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    train_f1s.append(train_f1)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+    test_f1s.append(test_f1)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
 
 
 ######################################################################################################################################################
 
 #2 layer models
 
+print("CAT - 2 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -525,7 +706,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -559,6 +740,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 2 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -576,7 +759,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -608,16 +791,14 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 2, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 2, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
-data = entropylog.get_data()
-print(data)
 
 ###########################################################################################################################################################################################
 
 # 4 layers
 
+print("CAT - 4 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -634,7 +815,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -668,6 +849,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 4 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -685,7 +868,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -717,16 +900,14 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 4, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 4, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
-data = entropylog.get_data()
-print(data)
 
 ###########################################################################################################################################################################################
 
 # 6 layers
 
+print("CAT - 6 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -743,7 +924,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -777,6 +958,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 6 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -794,7 +977,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -826,16 +1009,13 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 6, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 6, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-
-data = entropylog.get_data()
-print(data)
 
 ###########################################################################################################################################################################################
 
 # 7 layers
 
+print("CAT - 7 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -852,7 +1032,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -886,6 +1066,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 7 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -903,7 +1085,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -935,16 +1117,14 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 7, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 7, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
-data = entropylog.get_data()
-print(data)
 
 ###########################################################################################################################################################################################
 
 # 8 layers
 
+print("CAT - 8 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -961,7 +1141,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -995,6 +1175,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 8 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -1012,7 +1194,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -1044,16 +1226,14 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 8, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 8, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
-data = entropylog.get_data()
-print(data)
 
 ###########################################################################################################################################################################################
 
 # 9 layers
 
+print("CAT - 9 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -1070,7 +1250,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -1104,6 +1284,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 9 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -1121,7 +1303,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -1153,17 +1335,75 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 9, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 9, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
+# RTDL FT
+    
+print("RTDL FT - 9 layers")
 
-data = entropylog.get_data()
-print(data)
+ft_model = FTTransformer(
+    n_cont_features=len(cont_columns),
+    cat_cardinalities=cat_features,
+    d_out=target_classes[0],
+    n_blocks=9,
+    d_block=200,
+    attention_n_heads=10,
+    attention_dropout=0.1,
+    ffn_d_hidden=None,
+    ffn_d_hidden_multiplier=4 / 3,
+    ffn_dropout=0.1,
+    residual_dropout=0.0,
+    ).to(device_in_use)
+optimizer = torch.optim.Adam(params=model_ft.parameters(), lr = 0.0005)
+loss_function = nn.CrossEntropyLoss()
+early_stopping = EarlyStopping(patience=10, verbose=True)
+
+train_losses = []
+train_accuracies_1 = [] 
+train_f1s = []
+test_losses = []
+test_accuracies_1 = [] 
+test_f1s = []
+
+epochs = 800 
+
+for t in range(epochs):
+    train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
+                                get_attn=False,
+                                dataloader=train_dataloader, 
+                                model=ft_model, 
+                                loss_function=loss_function, 
+                                optimizer=optimizer, 
+                                device_in_use=device_in_use)
+    test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
+                            get_attn=False,
+                            dataloader=test_dataloader,
+                            model=ft_model,
+                            loss_function=loss_function,
+                            device_in_use=device_in_use)
+    train_losses.append(train_loss)
+    train_accuracies_1.append(train_acc)
+    train_f1s.append(train_f1)
+    test_losses.append(test_loss)
+    test_accuracies_1.append(test_acc)
+    test_f1s.append(test_f1)
+
+    epoch_str = f"Epoch [{t+1:2}/{epochs}]"
+    train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}"
+    test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}"
+    print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+
+    early_stopping(test_acc)
+    
+    if early_stopping.early_stop:
+        print("Early stopping")
+        break
 
 
 #####################################################################################################################################################
 
 # 1 layer models
 
+print("CAT - 1 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -1180,7 +1420,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -1214,6 +1454,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 1 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -1231,7 +1473,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -1263,16 +1505,14 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 1, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 1, "Jannis", df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
-data = entropylog.get_data()
-print(data)
 
 ###########################################################################################################################################################################################
 
 # 3 layers
 
+print("CAT - 3 layers")
+
 model_cat = CATTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
                        targets_classes=target_classes,
@@ -1289,7 +1529,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn= train(regression_on=False, 
@@ -1323,6 +1563,8 @@ for t in range(epochs):
 
 
 #And a FT
+    
+print("MYFT - 3 layers")
 
 model_ft = MyFTTransformer(n_cont=len(cont_columns),
                        cat_feat=cat_features,
@@ -1340,7 +1582,7 @@ train_accuracies_1 = []
 test_losses = []
 test_accuracies_1 = [] 
 
-epochs = 800
+epochs = 4
 
 for t in range(epochs):
     train_loss, train_acc, train_f1, attn = train(regression_on=False, 
@@ -1372,12 +1614,4 @@ for t in range(epochs):
         print("Early stopping")
         break
 
-attn_entropy_get(entropylog, model_cat, "CAT", 3, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
-attn_entropy_get(entropylog, model_ft, "FT", 3, "Jannis" ,df_train, df_test, target[0], cat_columns, cont_columns, device_in_use)
 
-data = entropylog.get_data()
-print(data)
-
-
-with open('/home/wdwatson2/projects/CAT-Transformer/interpretability/entropylog.pkl', 'wb') as file:
-    pickle.dump(entropylog, file)
