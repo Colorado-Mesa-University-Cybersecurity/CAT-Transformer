@@ -6,25 +6,23 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import pickle
 import matplotlib.pyplot as plt
-from rtdl_revisiting_models import FTTransformer
+import xgboost as xgb
+from sklearn.metrics import accuracy_score, f1_score
 
 from helpers import ModelPerformanceLog
 
 import sys
 sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
-from testingModel import CATTransformer, MyFTTransformer, Combined_Dataset, train, test, EarlyStopping, count_parameters
-import for_rtdl
+from testingModel import Combined_Dataset, train, test, EarlyStopping, count_parameters, rmse
+from tab_transformer_pytorch import TabTransformer
 
 device_in_use = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device_in_use)
 
-performance_log = ModelPerformanceLog()
-performance_log.add_model('FT')
-performance_log.add_model('CAT')
+with open('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_log.pkl', 'rb') as file:
+    performance_log = pickle.load(file)
 
 ##########################################################################################################################################################################################
-
-performance_log.add_new_dataset('Income')
 
 #income
 df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/income/train.csv')
@@ -70,16 +68,29 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
+
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
+
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        ).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = target_classes[0],               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.CrossEntropyLoss()
 
     early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -91,20 +102,20 @@ for trial_num in range(3):
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_acc, train_f1= train(regression_on=False, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_acc, test_f1= test(regression_on=False,
                                 get_attn=False,
                                 dataloader=test_dataloader,
-                                model=cat_model,
+                                model=tab_model,
                                 loss_function=loss_function,
                                 device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -127,75 +138,35 @@ for trial_num in range(3):
     
     print(trial_num)
 
-    performance_log.add_metric('CAT', 'Income', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Income', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Income', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('CAT', 'Income', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'Income', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Income', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Income', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Income', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('TAB', 'Income', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Income', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=target_classes[0],
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.CrossEntropyLoss()
-    early_stopping = EarlyStopping(patience=10, verbose=True)
+    #XGBoost
+    xg_model = xgb.XGBClassifier()
 
-    train_losses = []
-    train_accuracies_1 = [] 
-    train_f1s = []
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    acc = accuracy_score(y_test, yhat)
+    f1 = f1_score(y_test, yhat, average='weighted')
 
-    for t in range(epochs):
-        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                                get_attn=False,
-                                dataloader=test_dataloader,
-                                model=ft_model,
-                                loss_function=loss_function,
-                                device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_accuracies_1.append(train_acc)
-        train_f1s.append(train_f1)
-        test_losses.append(test_loss)
-        test_accuracies_1.append(test_acc)
-        test_f1s.append(test_f1)
+    print(f"Accuracy: {acc}, F1: {f1}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_accuracies_1.append(acc)
+    test_f1s.append(f1)
 
-        early_stopping(test_acc)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
+    performance_log.add_metric('XGBoost', 'Income', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Income', 'Test F1', test_f1s, trial=trial_num)
 
-    performance_log.add_metric('FT', 'Income', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Income', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Income', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('FT', 'Income', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'Income', 'Test Loss', test_losses, trial=trial_num)
 
 ###############################################################################################################################################################################################
-performance_log.add_new_dataset('Higgs')
-
-# Higgs
 
 df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/train.csv')
 df_test = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/higgs/test.csv')
@@ -244,16 +215,29 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
+
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
+
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        ).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = target_classes[0],               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.CrossEntropyLoss()
 
     early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -265,20 +249,20 @@ for trial_num in range(3):
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_acc, train_f1= train(regression_on=False, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_acc, test_f1= test(regression_on=False,
                                 get_attn=False,
                                 dataloader=test_dataloader,
-                                model=cat_model,
+                                model=tab_model,
                                 loss_function=loss_function,
                                 device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -298,76 +282,39 @@ for trial_num in range(3):
         if early_stopping.early_stop:
             print("Early stopping")
             break
+    
+    print(trial_num)
 
-    performance_log.add_metric('CAT', 'Higgs', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Higgs', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Higgs', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('CAT', 'Higgs', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'Higgs', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Higgs', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Higgs', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Higgs', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('TAB', 'Higgs', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Higgs', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=target_classes[0],
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.CrossEntropyLoss()
-    early_stopping = EarlyStopping(patience=10, verbose=True)
+    #XGBoost
+    xg_model = xgb.XGBClassifier()
 
-    train_losses = []
-    train_accuracies_1 = [] 
-    train_f1s = []
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    acc = accuracy_score(y_test, yhat)
+    f1 = f1_score(y_test, yhat, average='weighted')
 
-    for t in range(epochs):
-        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                                get_attn=False,
-                                dataloader=test_dataloader,
-                                model=ft_model,
-                                loss_function=loss_function,
-                                device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_accuracies_1.append(train_acc)
-        train_f1s.append(train_f1)
-        test_losses.append(test_loss)
-        test_accuracies_1.append(test_acc)
-        test_f1s.append(test_f1)
+    print(f"Accuracy: {acc}, F1: {f1}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_accuracies_1.append(acc)
+    test_f1s.append(f1)
 
-        early_stopping(test_acc)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-    performance_log.add_metric('FT', 'Higgs', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Higgs', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Higgs', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('FT', 'Higgs', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'Higgs', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Higgs', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Higgs', 'Test F1', test_f1s, trial=trial_num)
 
 
 ##################################################################################################################################################################################################
 
-performance_log.add_new_dataset('Helena')
 #Get Helena
 
 # df_train = pd.read_csv(r'C:\Users\smbm2\projects\CAT-Transformer\datasets\helena\train.csv')
@@ -424,16 +371,29 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
+
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
+
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        ).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = target_classes[0],               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.CrossEntropyLoss()
 
     early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -445,20 +405,20 @@ for trial_num in range(3):
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_acc, train_f1= train(regression_on=False, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_acc, test_f1= test(regression_on=False,
                                 get_attn=False,
                                 dataloader=test_dataloader,
-                                model=cat_model,
+                                model=tab_model,
                                 loss_function=loss_function,
                                 device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -478,75 +438,38 @@ for trial_num in range(3):
         if early_stopping.early_stop:
             print("Early stopping")
             break
+    
+    print(trial_num)
 
-    performance_log.add_metric('CAT', 'Helena', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Helena', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Helena', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('CAT', 'Helena', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'Helena', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Helena', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Helena', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Helena', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('TAB', 'Helena', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Helena', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=target_classes[0],
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.CrossEntropyLoss()
-    early_stopping = EarlyStopping(patience=10, verbose=True)
+    #XGBoost
+    xg_model = xgb.XGBClassifier()
 
-    train_losses = []
-    train_accuracies_1 = [] 
-    train_f1s = []
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    acc = accuracy_score(y_test, yhat)
+    f1 = f1_score(y_test, yhat, average='weighted')
 
-    for t in range(epochs):
-        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                                get_attn=False,
-                                dataloader=test_dataloader,
-                                model=ft_model,
-                                loss_function=loss_function,
-                                device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_accuracies_1.append(train_acc)
-        train_f1s.append(train_f1)
-        test_losses.append(test_loss)
-        test_accuracies_1.append(test_acc)
-        test_f1s.append(test_f1)
+    print(f"Accuracy: {acc}, F1: {f1}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_accuracies_1.append(acc)
+    test_f1s.append(f1)
 
-        early_stopping(test_acc)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-    performance_log.add_metric('FT', 'Helena', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Helena', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Helena', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('FT', 'Helena', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'Helena', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Helena', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Helena', 'Test F1', test_f1s, trial=trial_num)
 
 ##############################################################################################################################################################################################
 
-performance_log.add_new_dataset('Covertype')
 # Covertype
 
 df_train = pd.read_csv('/home/wdwatson2/projects/CAT-Transformer/datasets/covertype/train.csv')
@@ -604,16 +527,29 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
+
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
+
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        ).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = target_classes[0],               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.CrossEntropyLoss()
 
     early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -625,20 +561,20 @@ for trial_num in range(3):
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_acc, train_f1= train(regression_on=False, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_acc, test_f1= test(regression_on=False,
                                 get_attn=False,
                                 dataloader=test_dataloader,
-                                model=cat_model,
+                                model=tab_model,
                                 loss_function=loss_function,
                                 device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -658,76 +594,38 @@ for trial_num in range(3):
         if early_stopping.early_stop:
             print("Early stopping")
             break
+    
+    print(trial_num)
 
-    performance_log.add_metric('CAT', 'Covertype', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Covertype', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Covertype', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('CAT', 'Covertype', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'Covertype', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Covertype', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Covertype', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Covertype', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('TAB', 'Covertype', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Covertype', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=target_classes[0],
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.CrossEntropyLoss()
-    early_stopping = EarlyStopping(patience=10, verbose=True)
+    #XGBoost
+    xg_model = xgb.XGBClassifier()
 
-    train_losses = []
-    train_accuracies_1 = [] 
-    train_f1s = []
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    acc = accuracy_score(y_test, yhat)
+    f1 = f1_score(y_test, yhat, average='weighted')
 
-    for t in range(epochs):
-        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                                get_attn=False,
-                                dataloader=test_dataloader,
-                                model=ft_model,
-                                loss_function=loss_function,
-                                device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_accuracies_1.append(train_acc)
-        train_f1s.append(train_f1)
-        test_losses.append(test_loss)
-        test_accuracies_1.append(test_acc)
-        test_f1s.append(test_f1)
+    print(f"Accuracy: {acc}, F1: {f1}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_accuracies_1.append(acc)
+    test_f1s.append(f1)
 
-        early_stopping(test_acc)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-    performance_log.add_metric('FT', 'Covertype', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Covertype', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Covertype', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('FT', 'Covertype', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'Covertype', 'Test Loss', test_losses, trial=trial_num)
-
+    performance_log.add_metric('XGBoost', 'Covertype', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Covertype', 'Test F1', test_f1s, trial=trial_num)
 
 #############################################################################################################################################################################
 
-performance_log.add_new_dataset('Aloi')
 #GET Aloi
 
 # df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/aloi/train.csv')
@@ -788,16 +686,29 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
+
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
+
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        ).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = target_classes[0],               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.CrossEntropyLoss()
 
     early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -809,20 +720,20 @@ for trial_num in range(3):
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_acc, train_f1= train(regression_on=False, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_acc, test_f1= test(regression_on=False,
                                 get_attn=False,
                                 dataloader=test_dataloader,
-                                model=cat_model,
+                                model=tab_model,
                                 loss_function=loss_function,
                                 device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -842,71 +753,35 @@ for trial_num in range(3):
         if early_stopping.early_stop:
             print("Early stopping")
             break
+    
+    print(trial_num)
 
-    performance_log.add_metric('CAT', 'Aloi', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Aloi', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Aloi', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('CAT', 'Aloi', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'Aloi', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Aloi', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Aloi', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Aloi', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('TAB', 'Aloi', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Aloi', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=target_classes[0],
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.CrossEntropyLoss()
-    early_stopping = EarlyStopping(patience=10, verbose=True)
+    #XGBoost
+    xg_model = xgb.XGBClassifier()
 
-    train_losses = []
-    train_accuracies_1 = [] 
-    train_f1s = []
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    acc = accuracy_score(y_test, yhat)
+    f1 = f1_score(y_test, yhat, average='weighted')
 
-    for t in range(epochs):
-        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                                get_attn=False,
-                                dataloader=test_dataloader,
-                                model=ft_model,
-                                loss_function=loss_function,
-                                device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_accuracies_1.append(train_acc)
-        train_f1s.append(train_f1)
-        test_losses.append(test_loss)
-        test_accuracies_1.append(test_acc)
-        test_f1s.append(test_f1)
+    print(f"Accuracy: {acc}, F1: {f1}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_accuracies_1.append(acc)
+    test_f1s.append(f1)
 
-        early_stopping(test_acc)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-    performance_log.add_metric('FT', 'Aloi', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Aloi', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Aloi', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('FT', 'Aloi', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'Aloi', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Aloi', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Aloi', 'Test F1', test_f1s, trial=trial_num)
 
 ##################################################################################################################################################################################
 
@@ -962,40 +837,51 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
 
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        regression_on=True).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = 1,               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.MSELoss()
 
-    early_stopping = EarlyStopping(patience=16, verbose=True, mode='min') #for regression
+    early_stopping = EarlyStopping(patience=16, verbose=True, mode='min')
 
     train_losses = []
     train_rmse_1 = [] 
     test_losses = []
     test_rmse_1 = [] 
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_rmse = train(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_rmse = test(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -1013,69 +899,33 @@ for trial_num in range(3):
         if early_stopping.early_stop:
             print("Early stopping")
             break
+    
+    print(trial_num)
 
-    performance_log.add_metric('CAT', 'California', 'Test RMSE', test_rmse_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'California', 'Train RMSE', train_rmse_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'California', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'California', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'California', 'Test RMSE', test_rmse_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'California', 'Train RMSE', train_rmse_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'California', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'California', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=1,
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.MSELoss()
-    early_stopping = EarlyStopping(patience=16, verbose=True, mode='min') #for regression
+    #XGBoost
+    xg_model = xgb.XGBRegressor()
 
-    train_losses = []
-    train_rmse_1 = [] 
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_rmse_1 = [] 
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    rmse_xg = rmse(y_test, yhat)
 
-    for t in range(epochs):
-        train_loss, train_rmse = for_rtdl.train(regression_on=True, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_rmse = for_rtdl.test(regression_on=True, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_rmse_1.append(train_rmse)
-        test_losses.append(test_loss)
-        test_rmse_1.append(test_rmse)
+    print(f"RMSE: {rmse_xg}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, RMSE {(train_rmse)}"
-        test_metrics = f"Test: Loss {(test_loss)}, RMSE {(test_rmse)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_rmse_1.append(rmse_xg)
 
-        early_stopping(test_rmse)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-    performance_log.add_metric('FT', 'California', 'Test RMSE', test_rmse_1, trial=trial_num)
-    performance_log.add_metric('FT', 'California', 'Train RMSE', train_rmse_1, trial=trial_num)
-    performance_log.add_metric('FT', 'California', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'California', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'California', 'Test RMSE', test_rmse_1, trial=trial_num)
 
 #############################################################################################################################################################################
 
-performance_log.add_new_dataset('Jannis')
 #GET Jannis
 
 # df_train = pd.read_csv('/home/cscadmin/CyberResearch/CAT-Transformer/datasets/jannis/train.csv')
@@ -1132,16 +982,29 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+#For xgboost
+X_train = df_train.drop(target[0], axis=1)
+y_train = df_train[target[0]]
+
+X_test = df_test.drop(target[0], axis=1)
+y_test = df_test[target[0]]
+
 
 for trial_num in range(3):
-    #CAT
-    cat_model = CATTransformer(n_cont=len(cont_columns),
-                        cat_feat=cat_features,
-                        targets_classes=target_classes,
-                        get_attn=False,
-                        ).to(device_in_use)
+    #TAB
+    tab_model = TabTransformer(categories = cat_features,      # tuple containing the number of unique values within each category
+                                num_continuous = len(cont_columns),                # number of continuous values
+                                dim = 32,                           # dimension, paper set at 32
+                                dim_out = target_classes[0],               
+                                depth = 6,                          # depth, paper recommended 6
+                                heads = 8,                          # heads, paper recommends 8
+                                attn_dropout = 0.1,                 # post-attention dropout
+                                ff_dropout = 0.1,                   # feed forward dropout
+                                mlp_hidden_mults = (4, 2),          # relative multiples of each hidden dimension of the last mlp to logits
+                                mlp_act = nn.ReLU(),                # activation for final mlp, defaults to relu, but could be anything else (selu etc))
+                                ).to(device_in_use)
 
-    optimizer = torch.optim.Adam(params=cat_model.parameters(), lr=0.0005)
+    optimizer = torch.optim.AdamW(params=tab_model.parameters()) #no default lr or weight decay was given in the paper so I will use the default for AdamW
     loss_function = nn.CrossEntropyLoss()
 
     early_stopping = EarlyStopping(patience=10, verbose=True)
@@ -1153,20 +1016,20 @@ for trial_num in range(3):
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    epochs = 800
 
     for t in range(epochs):
         train_loss, train_acc, train_f1= train(regression_on=False, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=tab_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_acc, test_f1= test(regression_on=False,
                                 get_attn=False,
                                 dataloader=test_dataloader,
-                                model=cat_model,
+                                model=tab_model,
                                 loss_function=loss_function,
                                 device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -1186,73 +1049,35 @@ for trial_num in range(3):
         if early_stopping.early_stop:
             print("Early stopping")
             break
+    
+    print(trial_num)
 
-    performance_log.add_metric('CAT', 'Jannis', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Jannis', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('CAT', 'Jannis', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('CAT', 'Jannis', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('CAT', 'Jannis', 'Test Loss', test_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Jannis', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Jannis', 'Train Accuracy', train_accuracies_1, trial=trial_num)
+    performance_log.add_metric('TAB', 'Jannis', 'Test F1', test_f1s, trial=trial_num)
+    performance_log.add_metric('TAB', 'Jannis', 'Train Loss', train_losses, trial=trial_num)
+    performance_log.add_metric('TAB', 'Jannis', 'Test Loss', test_losses, trial=trial_num)
 
 
-    #FT
-    ft_model = FTTransformer(
-        n_cont_features=len(cont_columns),
-        cat_cardinalities=cat_features,
-        d_out=target_classes[0],
-        **FTTransformer.get_default_kwargs(),
-    ).to(device_in_use)
-    optimizer = ft_model.make_default_optimizer()
-    loss_function = nn.CrossEntropyLoss()
-    early_stopping = EarlyStopping(patience=10, verbose=True)
+    #XGBoost
+    xg_model = xgb.XGBClassifier()
 
-    train_losses = []
-    train_accuracies_1 = [] 
-    train_f1s = []
-    test_losses = []
+    xg_model.fit(X_train, y_train)
+
     test_accuracies_1 = [] 
     test_f1s = []
 
-    epochs = 800 
+    yhat = xg_model.predict(X_test)
+    acc = accuracy_score(y_test, yhat)
+    f1 = f1_score(y_test, yhat, average='weighted')
 
-    for t in range(epochs):
-        train_loss, train_acc, train_f1= for_rtdl.train(regression_on=False, 
-                                    get_attn=False,
-                                    dataloader=train_dataloader, 
-                                    model=ft_model, 
-                                    loss_function=loss_function, 
-                                    optimizer=optimizer, 
-                                    device_in_use=device_in_use)
-        test_loss, test_acc, test_f1= for_rtdl.test(regression_on=False,
-                                get_attn=False,
-                                dataloader=test_dataloader,
-                                model=ft_model,
-                                loss_function=loss_function,
-                                device_in_use=device_in_use)
-        train_losses.append(train_loss)
-        train_accuracies_1.append(train_acc)
-        train_f1s.append(train_f1)
-        test_losses.append(test_loss)
-        test_accuracies_1.append(test_acc)
-        test_f1s.append(test_f1)
+    print(f"Accuracy: {acc}, F1: {f1}")
 
-        epoch_str = f"Epoch [{t+1:2}/{epochs}]"
-        train_metrics = f"Train: Loss {(train_loss)}, Accuracy {(train_acc)}, F1 {(train_f1)}"
-        test_metrics = f"Test: Loss {(test_loss)}, Accuracy {(test_acc)}, F1 {(test_f1)}"
-        print(f"{epoch_str:15} | {train_metrics:65} | {test_metrics:65}")
+    test_accuracies_1.append(acc)
+    test_f1s.append(f1)
 
-        early_stopping(test_acc)
-        
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-    performance_log.add_metric('FT', 'Jannis', 'Test Accuracy', test_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Jannis', 'Train Accuracy', train_accuracies_1, trial=trial_num)
-    performance_log.add_metric('FT', 'Jannis', 'Test F1', test_f1s, trial=trial_num)
-    performance_log.add_metric('FT', 'Jannis', 'Train Loss', train_losses, trial=trial_num)
-    performance_log.add_metric('FT', 'Jannis', 'Test Loss', test_losses, trial=trial_num)
-
-
+    performance_log.add_metric('XGBoost', 'Jannis', 'Test Accuracy', test_accuracies_1, trial=trial_num)
+    performance_log.add_metric('XGBoost', 'Jannis', 'Test F1', test_f1s, trial=trial_num)
 
 with open('/home/wdwatson2/projects/CAT-Transformer/new_experiments/performance_log.pkl', 'wb') as file:
     pickle.dump(performance_log, file)

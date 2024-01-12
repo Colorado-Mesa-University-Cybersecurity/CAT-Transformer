@@ -677,13 +677,22 @@ def rmse(y_true, y_pred):
     # Calculate the squared differences
     squared_diff = (y_true - y_pred)**2
 
-    # Calculate the mean of the squared differences
-    mean_squared_diff = torch.mean(squared_diff)
+    try:
+        # Calculate the mean of the squared differences
+        mean_squared_diff = torch.mean(squared_diff)
 
-    # Calculate the square root to obtain RMSE
-    rmse = torch.sqrt(mean_squared_diff)
+        # Calculate the square root to obtain RMSE
+        rmse = torch.sqrt(mean_squared_diff)
 
-    return rmse.item()  # Convert to a Python float
+        return rmse.item()  # Convert to a Python float
+    except:
+        # Calculate the mean of the squared differences
+        mean_squared_diff = np.mean(squared_diff)
+
+        # Calculate the square root to obtain RMSE
+        rmse = np.sqrt(mean_squared_diff)
+
+        return rmse
 
 #Training and Testing Loops for Different Cases
 def train(get_attn, regression_on, dataloader, model, loss_function, optimizer, device_in_use):
