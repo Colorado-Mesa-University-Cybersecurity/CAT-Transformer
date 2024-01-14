@@ -26,7 +26,7 @@ metric
 #classes 2
 
 ## Higgs
-url: https://archive.ics.uci.edu/dataset/280/higgs  
+url: https://www.openml.org/search?type=data&status=active&sort=qualities.NumberOfInstances&id=4532 
 This is a classification problem to distinguish between a signal process which produces Higgs bosons and a background process which does not.  
 Classes = ( 0.0, 1.0)
 Missing Values = No
