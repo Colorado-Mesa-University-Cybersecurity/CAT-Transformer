@@ -871,7 +871,7 @@ class EarlyStopping:
     def __call__(self, val_score):
         if self.best_score is None:
             self.best_score = val_score
-        elif ((val_score - self.best_score) < self.delta and self.mode != 'min') or ((val_score - self.best_score) > self.delta and self.mode == 'min'):
+        elif ((val_score - self.best_score) <= self.delta and self.mode != 'min') or ((val_score - self.best_score) >= self.delta and self.mode == 'min'):
             self.counter += 1
             if self.verbose:
                 print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
