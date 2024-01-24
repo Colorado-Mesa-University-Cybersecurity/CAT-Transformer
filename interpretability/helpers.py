@@ -5,8 +5,8 @@ import numpy as np
 import torch 
 from torch.utils.data import DataLoader
 import sys
-sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
-# sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
+# sys.path.insert(0, '/home/wdwatson2/projects/CAT-Transformer/model')
+sys.path.insert(0, r'C:\Users\smbm2\projects\CAT-Transformer\model')
 from testingModel import Combined_Dataset
 
 class TrainingAttnScoresLog:
@@ -203,3 +203,49 @@ def build_table(entropy_log):
                             table[class_name]['Income'][layers][split][dataset][model] = class_data['Entropy']
 
     return table
+
+ieee_colors = ['#ca0020', '#0571b0', '#92c5de','#f4a582']
+model_to_attn = {'CAT':'Cross-Attention', 'FT':'Self-Attention'}
+
+def filter_data(df, class_name, dataset, split):
+    filtered_df = df[(df['Class'] == class_name) & (df['Dataset'] == dataset) & (df['Split'] == split)]
+    return filtered_df
+
+def create_scatter_plot(df, x_column, y_column, title):
+    cat_df = df[df['Model'] == 'CAT']
+    ft_df = df[df['Model'] == 'FT']
+
+    plt.scatter(cat_df[x_column], cat_df[y_column], c=[ieee_colors[0]], label='Cross-Attention')
+    plt.scatter(ft_df[x_column], ft_df[y_column], c=[ieee_colors[1]], label='Self-Attention')
+
+    plt.title(title)
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+    plt.legend(loc='lower right')
+    plt.show()
+
+def plot_entropy_vs_layers(df, class_name, dataset, split):
+    filtered_df = filter_data(df, class_name, dataset, split)
+
+    title = f'Entropy vs Layers for {dataset}, {class_name}'
+    create_scatter_plot(filtered_df, 'Layers', 'Entropy', title)
+
+def plot_entropy_vs_layers_classes(df, model, dataset, split='test'):
+    filtered_df = df[(df['Dataset'] == dataset) & (df['Split'] == split) & (df['Model'] == model)]
+
+    xcol = 'Layers'
+    ycol = 'Entropy'
+    for i, cls in enumerate(df['Class'].unique()):
+        plt.scatter(df['Layers'], df['Entropy'], c=ieee_colors[i], label = f'{cls}')
+    plt.title(f'Entropy vs Layers for {dataset}, {model_to_attn[model]}')
+    plt.xlabel(xcol)
+    plt.ylabel(ycol)
+    plt.legend(loc='lower right')
+    plt.show()
+
+
+
+
+
+
+
