@@ -165,14 +165,14 @@ for trial_num in range(3):
         train_loss, train_rmse = train(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_rmse = test(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -280,14 +280,14 @@ for trial_num in range(3):
         train_loss, train_rmse = train(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_rmse = test(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -395,14 +395,14 @@ for trial_num in range(3):
         train_loss, train_rmse = train(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_rmse = test(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     device_in_use=device_in_use)
         train_losses.append(train_loss)
@@ -509,14 +509,14 @@ for trial_num in range(3):
         train_loss, train_rmse = train(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     optimizer=optimizer, 
                                     device_in_use=device_in_use)
         test_loss, test_rmse = test(regression_on=True, 
                                     get_attn=False,
                                     dataloader=train_dataloader, 
-                                    model=cat_model, 
+                                    model=ft_model, 
                                     loss_function=loss_function, 
                                     device_in_use=device_in_use)
         train_losses.append(train_loss)
