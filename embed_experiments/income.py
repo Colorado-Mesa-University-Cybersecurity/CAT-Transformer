@@ -70,7 +70,7 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 # Load the object
-with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'rb') as file:
+with open('/home/cscadmin/CyberResearch/CAT-Transformer/embed_experiments/evaluation_log.pkl', 'rb') as file:
     evaluation_log = pickle.load(file)
 
 # with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'rb') as file:
@@ -573,7 +573,7 @@ for trial_num in range(3):
 # with open(r'C:\Users\smbm2\projects\CAT-Transformer\cat_vs_ft\evaluation_log.pkl', 'wb') as file:
 #     pickle.dump(evaluation_log, file)
 
-with open('/home/cscadmin/CyberResearch/CAT-Transformer/cat_vs_ft/evaluation_log.pkl', 'wb') as file:
+with open('/home/cscadmin/CyberResearch/CAT-Transformer/embed_experiments/evaluation_log.pkl', 'wb') as file:
     pickle.dump(evaluation_log, file)
 
 

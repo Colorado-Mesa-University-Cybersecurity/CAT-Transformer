@@ -12,11 +12,51 @@ device_in_use = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device_in_use)
 
 with open(r'C:\Users\smbm2\projects\CAT-Transformer\embed_experiments\evaluation_log.pkl', 'rb') as file:
-    log = pickle.load(file)
+    evaluation_log = pickle.load(file)
 
-df_best_test_accuracy = log.get_best_test_accuracy()
+# Create an empty DataFrame
+columns = ['Model', 'Embedding Technique', 'Dataset', 'Mean Test Acc', 'Std Test Acc', 'Mean Test RMSE', 'Std Test RMSE']
+result_df = pd.DataFrame(columns=columns)
 
-df_best_test_accuracy.to_csv(r'C:\Users\smbm2\projects\CAT-Transformer\embed_experiments\results.csv', index=False)
+# Iterate over the data in your EvaluationLog
+for model_name in evaluation_log.log:
+    for embedding_technique in evaluation_log.log[model_name]:
+        for dataset_name in evaluation_log.log[model_name][embedding_technique]:
+            trial_numbers = list(evaluation_log.log[model_name][embedding_technique][dataset_name].keys())
+
+            # Calculate mean and std for Test Acc
+            test_acc_values = []
+            for trial_number in trial_numbers:
+                values = evaluation_log.get_metric_values(model_name, embedding_technique, dataset_name, trial_number, 'Test Acc')[-1]
+                if values:
+                    test_acc_values.append(values)
+            
+            mean_test_acc = pd.Series(test_acc_values).mean()
+            std_test_acc = pd.Series(test_acc_values).std()
+
+            # Calculate mean and std for Test RMSE
+            test_rmse_values = []
+            for trial_number in trial_numbers:
+                values = evaluation_log.get_metric_values(model_name, embedding_technique, dataset_name, trial_number, 'Test RMSE')[-1]
+                if values:
+                    test_rmse_values.append(values)
+            
+            mean_test_rmse = pd.Series(test_rmse_values).mean()
+            std_test_rmse = pd.Series(test_rmse_values).std()
+
+            # Append the results to the DataFrame
+            result_df = result_df.append({
+                'Model': model_name,
+                'Embedding Technique': embedding_technique,
+                'Dataset': dataset_name,
+                'Mean Test Acc': mean_test_acc,
+                'Std Test Acc': std_test_acc,
+                'Mean Test RMSE': mean_test_rmse,
+                'Std Test RMSE': std_test_rmse
+            }, ignore_index=True)
+
+
+result_df.to_csv(r'C:\Users\smbm2\projects\CAT-Transformer\embed_experiments\results.csv', index=False)
 
 
 

@@ -42,7 +42,7 @@ class EvaluationLog:
                 and metric_name in self.log[model_name][embedding_technique][dataset_name][trial_number]:
             return self.log[model_name][embedding_technique][dataset_name][trial_number][metric_name]
         else:
-            return None
+            return [None]
 
     def add_new_dataset(self, dataset_name):
         for model in self.log:
