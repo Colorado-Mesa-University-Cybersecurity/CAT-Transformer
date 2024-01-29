@@ -53,81 +53,54 @@ class EvaluationLog:
         self.add_metric(model_name, embedding_technique, dataset_name, trial_number, metric_name, values)
 
 
-
 import matplotlib.pyplot as plt
 
 models = ["CAT", "FT"]
-embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]
+embedding_techniques = ["ConstantPL", "PL", "ExpFF", "L"]
 new_labels = ["RFF - L", "Periodic - L", "Log-linear - L", "L"]
-metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
-# ieee_colors = ['#ca0020', '#0571b0', '#92c5de','#f4a582']
-ieee_colors = ['#a1dab4', '#2c7fb8', '#41b6c4','#253494']
+metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc", "Train RMSE", "Test RMSE"]
+ieee_colors = ['#ca0020', '#0571b0', '#92c5de','#f4a582']
+# ieee_colors = ['#a1dab4', '#2c7fb8', '#41b6c4','#253494']
 
-def plot_two_accuracies(evaluation_log, model_name, dataset_name, embedding):
-    plt.figure(figsize=(10, 6))
-    for model in model_name:
-        test_acc = evaluation_log.get_metric_values(model, embedding, dataset_name, "Test Acc")
-        if test_acc:
-            plt.plot(range(len(test_acc)), test_acc, label=f"{model}")
-    plt.title(f"{model_name} Test Accuracies")
-    plt.xlabel("Epochs")
-    plt.ylabel("Test Accuracy")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-def plot_train_losses(evaluation_log, model_name, dataset_name):
-    plt.figure(figsize=(10, 6))
-    for embedding in embedding_techniques:
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Train Loss")
-        if train_losses:
-            plt.plot(range(len(train_losses)), train_losses, label=f"{embedding}")
-    plt.title(f"{model_name} Train Losses for Different Embedding Schemes")
-    plt.xlabel("Epochs")
-    plt.ylabel("Train Loss")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-def plot_train_accuracies(evaluation_log, model_name, dataset_name):
-    plt.figure(figsize=(10, 6))
-    for embedding in embedding_techniques:
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Train Acc")
-        if train_losses:
-            plt.plot(range(len(train_losses)), train_losses, label=f"{embedding}")
-    plt.title(f"{model_name} Train Accuracies for Different Embedding Schemes")
-    plt.xlabel("Epochs")
-    plt.ylabel("Train Accuracy")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-def plot_test_accuracies(evaluation_log, model_name, dataset_name):
+def plot_test_accuracies(evaluation_log, model_name, dataset_name, trial_number=0):
     plt.figure(figsize=(10, 6))
     for i, (embedding, name) in enumerate(zip(embedding_techniques, new_labels)):
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Test Acc")
-        if train_losses:
-            plt.plot(range(len(train_losses)), train_losses, label=f"{name}", color=ieee_colors[i % len(ieee_colors)])
-    plt.title(f"{model_name} Test Accuracies for Different Embedding Schemes - {dataset_name}")
+        test_accuracies = evaluation_log.get_metric_values(model_name, embedding, dataset_name, trial_number, "Test Acc")
+        if test_accuracies:
+            plt.plot(range(len(test_accuracies)), test_accuracies, label=f"{name}", color=ieee_colors[i % len(ieee_colors)])
+    plt.title(f"{model_name} Test Accuracies for Different Embedding Schemes - {dataset_name} (Trial {trial_number + 1})")
     plt.xlabel("Epochs")
     plt.ylabel("Test Accuracy")
     plt.legend()
     plt.grid(True)
     plt.show()
 
+def plot_test_rmses(evaluation_log, model_name, dataset_name, trial_number=0):
+    plt.figure(figsize=(10, 6))
+    for i, (embedding, name) in enumerate(zip(embedding_techniques, new_labels)):
+        test_accuracies = evaluation_log.get_metric_values(model_name, embedding, dataset_name, trial_number, "Test RMSE")
+        if test_accuracies:
+            plt.plot(range(len(test_accuracies)), test_accuracies, label=f"{name}", color=ieee_colors[i % len(ieee_colors)])
+    plt.title(f"{model_name} Test RMSE for Different Embedding Schemes - {dataset_name} (Trial {trial_number + 1})")
+    plt.xlabel("Epochs")
+    plt.ylabel("Test RMSE")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
-def plot_loss(evaluation_log, model_name, dataset_name):
+def plot_loss(evaluation_log, model_name, dataset_name, trial_number=0):
     plt.figure(figsize=(12, 8))
     
     for i, (embedding, name) in enumerate(zip(embedding_techniques, new_labels)):
-        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Train Loss")
-        test_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, "Test Loss")
+        train_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, trial_number, "Train Loss")
+        test_losses = evaluation_log.get_metric_values(model_name, embedding, dataset_name, trial_number, "Test Loss")
         
         if train_losses:
             plt.plot(range(len(train_losses)), train_losses, label=f"{name} - Train", color=ieee_colors[i % len(ieee_colors)], linewidth=2)
-            plt.plot(range(len(test_losses)), test_losses, label=f"{name} - Test", color=ieee_colors[i % len(ieee_colors)], linestyle='dotted', linewidth=2)
+            if test_losses:
+                plt.plot(range(len(test_losses)), test_losses, label=f"{name} - Test", color=ieee_colors[i % len(ieee_colors)], linestyle='dotted', linewidth=2)
 
-    plt.title(f"{model_name} Train and Test Losses for Different Embedding Schemes - {dataset_name}")
+    plt.title(f"{model_name} Train and Test Losses for Different Embedding Schemes - {dataset_name} (Trial {trial_number + 1})")
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.legend()

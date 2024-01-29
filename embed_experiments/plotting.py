@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from EvaluationLog import EvaluationLog, plot_train_losses, plot_train_accuracies, plot_test_accuracies, plot_two_accuracies, plot_loss
+from EvaluationLog import EvaluationLog, plot_test_accuracies, plot_loss, plot_test_rmses
 import pickle
 
 # Load the object
@@ -12,28 +12,17 @@ with open(r'C:\Users\smbm2\projects\CAT-Transformer\embed_experiments\evaluation
 # dataset = 'Higgs'
 
 models = ["CAT", "FT"]
-embedding_techniques = ["ConstantPL", "PL", "Exp", "L"]
+embedding_techniques = ["ConstantPL", "PL", "ExpFF", "L"]
 metrics = ["Train Loss", "Test Loss", "Train Acc", "Test Acc"]
 datasets = ['Helena', 'Higgs', 'Income', 'California', 'Covertype']
 
-for dataset in datasets:
-    plot_loss(evaluation_log, "CAT", dataset)
-
-# plot_two_accuracies(evaluation_log, models, dataset, "ConstantPL")
-
-# # Plot train losses for each model
-# for model in models:
-#     plot_train_losses(evaluation_log, model, dataset)
-
-# # Plot train losses for each model
-# for model in models:
-#     plot_train_accuracies(evaluation_log, model,dataset)
-
-# # Plot train losses for each model
-# for model in models:
-#     plot_test_losses(evaluation_log, model,dataset)
-
-# Plot train losses for each model
+trial_num = 2
 
 for dataset in datasets:
-    plot_test_accuracies(evaluation_log, "CAT",dataset)
+    plot_loss(evaluation_log, "CAT", dataset, trial_num)
+
+for dataset in datasets:
+    plot_test_accuracies(evaluation_log, "CAT",dataset, trial_num)
+
+for dataset in datasets:
+    plot_test_rmses(evaluation_log, "CAT",dataset, trial_num)
