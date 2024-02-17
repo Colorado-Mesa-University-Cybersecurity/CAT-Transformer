@@ -24,3 +24,11 @@ The official repository for the research done in the manuscript "Transformers fo
   - `saint.py` and `for_rtdl`
     - Both are helpers for using SAINT and FT.
 - The rest is not important for experimentation and replication of results
+
+## Credit
+
+The `rdtl` package which contains the out-of-box FT-Transformer: https://github.com/yandex-research/rtdl 
+
+The repository of SAINT: https://github.com/somepago/saint
+
+The implementation of TabTransformer: https://github.com/lucidrains/tab-transformer-pytorch
