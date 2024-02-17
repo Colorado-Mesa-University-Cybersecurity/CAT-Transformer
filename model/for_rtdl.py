@@ -5,6 +5,11 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import f1_score
 
+'''
+FTTransformer from rtdl package runs continuous features before categorical features
+so this just switches the order so that our training and testing functions work with their implementation
+'''
+
 def rmse(y_true, y_pred):
     # Calculate the squared differences
     squared_diff = (y_true - y_pred)**2

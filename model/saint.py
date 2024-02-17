@@ -6,6 +6,11 @@ from einops import rearrange
 from torch.utils.data import Dataset
 from sklearn.metrics import f1_score
 
+'''
+Code sourced from authors repository
+https://github.com/somepago/saint
+'''
+
 # helpers
 
 def exists(val):

@@ -4,6 +4,10 @@ import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import f1_score
+
+'''
+The first implementation of CAT and our version of FT used in research
+'''
     
 #All layers of the model
 class MultiHeadAttention(nn.Module):
