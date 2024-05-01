@@ -1,6 +1,6 @@
 # Transformers for Supervised Tabular Learning
 
-The official repository for the research done in the manuscript "Transformers for Supervised Tabular Learning." 
+The official repository for the research done in the manuscript "Transformers for Supervised Tabular Learning" that is under review currently.
 
 ## Environment Setup
 
